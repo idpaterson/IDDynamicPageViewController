@@ -33,6 +33,14 @@
    }
 }
 
+- (NSUInteger)numberOfObjects
+{
+   @synchronized(_objects)
+   {
+      return _objects.count;
+   }
+}
+
 - (NSUInteger)indexOfObject:(id)object
 {
    @synchronized(_objects)
@@ -197,27 +205,7 @@
    }
 }
 
-#pragma mark - UIPageViewControllerDataSource implementation
-
-- (UIViewController *)pageViewController:(IDDynamicPageViewController *)pageViewController viewControllerAfterViewController:(UIViewController *)viewController
-{
-   if (pageViewController)
-   {
-      _pageViewController = pageViewController;
-   }
-
-   return [self viewControllerByOffset:1 fromViewController:viewController];
-}
-
-- (UIViewController *)pageViewController:(IDDynamicPageViewController *)pageViewController viewControllerBeforeViewController:(UIViewController *)viewController
-{
-   if (pageViewController)
-   {
-      _pageViewController = pageViewController;
-   }
-
-   return [self viewControllerByOffset:-1 fromViewController:viewController];
-}
+#pragma mark - IDDynamicPageViewControllerDataSource implementation
 
 - (UIViewController *)pageViewController:(IDDynamicPageViewController *)pageViewController viewControllerForObject:(id)object
 {

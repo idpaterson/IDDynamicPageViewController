@@ -98,8 +98,9 @@ typedef NSString * (^ IDPageViewDataSourceReuseIdentifierBlock)(id object, IDDyn
 /// @return The object or `nil` if the index is outside the range of <objects>
 - (id)objectAtIndex:(NSUInteger)index;
 
-- (NSArray *)allObjects;
-
+/// Returns the number of objects in the data source.
+///
+/// @return The number of objects in the data source.
 - (NSUInteger)numberOfObjects;
 
 #pragma mark - Data Manipulation

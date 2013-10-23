@@ -794,7 +794,7 @@
 
    UIViewController * viewController     = pageViewController.activeViewController;
    UIViewController * nextViewController = [dataSource pageViewController:pageViewController
-                                        viewControllerAfterViewController:viewController];
+                                             viewControllerForPageAtIndex:1];
 
    [pageViewController setViewController:nextViewController
                                direction:IDDynamicPageViewControllerNavigationDirectionForward

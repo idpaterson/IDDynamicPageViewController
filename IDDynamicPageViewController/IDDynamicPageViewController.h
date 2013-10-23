@@ -404,26 +404,6 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 /// indicate that there is no controller for that index.
 - (UIViewController *)pageViewController:(IDDynamicPageViewController *)pageViewController viewControllerForPageAtIndex:(NSUInteger)index;
 
-/// Returns the view controller before the given view controller. (required)
-///
-/// @param pageViewController The page view controller
-/// @param viewController     The view controller that the user navigated away
-/// from.
-///
-/// @return The view controller before the given view controller, or `nil` to
-/// indicate that there is no previous view controller.
-- (UIViewController *)pageViewController:(IDDynamicPageViewController *)pageViewController viewControllerBeforeViewController:(UIViewController *)viewController;
-
-/// Returns the view controller after the given view controller. (required)
-///
-/// @param pageViewController The page view controller
-/// @param viewController     The view controller that the user navigated away
-/// from.
-///
-/// @return The view controller after the given view controller, or `nil` to
-/// indicate that there is no next view controller.
-- (UIViewController *)pageViewController:(IDDynamicPageViewController *)pageViewController viewControllerAfterViewController:(UIViewController *)viewController;
-
 /// Returns the controller that should be displayed when the data source is set.
 /// (required)
 ///

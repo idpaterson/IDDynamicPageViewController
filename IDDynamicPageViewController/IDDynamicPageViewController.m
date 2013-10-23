@@ -426,16 +426,23 @@
       [self removeViewController:_otherViewController animated:NO];
    }
 
-   UIViewController * viewController;
+   UIViewController * viewController              = nil;
+   NSUInteger         indexOfActiveViewController = self.indexOfActiveViewController;
 
    switch (direction)
    {
       case IDDynamicPageViewControllerNavigationDirectionForward:
-         viewController = [_dataSource pageViewController:self viewControllerAfterViewController:_activeViewController];
+         if (indexOfActiveViewController + 1 < [_dataSource numberOfPagesInPageViewController:self])
+         {
+            viewController = [_dataSource pageViewController:self viewControllerForPageAtIndex:indexOfActiveViewController + 1];
+         }
          break;
 
       case IDDynamicPageViewControllerNavigationDirectionReverse:
-         viewController = [_dataSource pageViewController:self viewControllerBeforeViewController:_activeViewController];
+         if (indexOfActiveViewController > 0)
+         {
+            viewController = [_dataSource pageViewController:self viewControllerForPageAtIndex:indexOfActiveViewController - 1];
+         }
          break;
 
       case IDDynamicPageViewControllerNavigationDirectionNone:
