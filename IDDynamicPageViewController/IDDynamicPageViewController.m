@@ -677,24 +677,13 @@
 
 - (void)beginUpdates
 {
-   if (++_updateLevel == 1)
-   {
-      _indexOfActiveViewControllerAfterChanges = [self indexOfActiveViewController];
-   }
+   ++_updateLevel;
 }
 
 - (void)endUpdates
 {
    if (--_updateLevel == 0)
    {
-      @synchronized(_indexByControllerReference)
-      {
-         IDWeakObjectRepresentation * weakReference = [IDWeakObjectRepresentation weakRepresentationOfObject:_activeViewController];
-
-         _indexByControllerReference[weakReference] = @(_indexOfActiveViewControllerAfterChanges);
-      }
-      _indexOfActiveViewControllerAfterChanges = NSNotFound;
-
       [self reloadData];
    }
 }
@@ -717,61 +706,6 @@
 
       [self endUpdates];
    }
-}
-
-- (void)insertPagesAtIndexes:(NSIndexSet *)indexes
-{
-   [self beginUpdatesIfNecessary];
-
-   NSRange upToActiveController = NSMakeRange(0, self.indexOfActiveViewController);
-
-   _indexOfActiveViewControllerAfterChanges += [indexes countOfIndexesInRange:upToActiveController];
-
-   [self endUpdatesIfWasNecessaryToBegin];
-}
-
-- (void)deletePagesAtIndexes:(NSIndexSet *)indexes
-{
-   [self beginUpdatesIfNecessary];
-
-   if ([indexes containsIndex:self.indexOfActiveViewController])
-   {
-
-   }
-   else
-   {
-      NSRange upToNotIncludingActiveController = NSMakeRange(0, self.indexOfActiveViewController - 1);
-      _indexOfActiveViewControllerAfterChanges -= [indexes countOfIndexesInRange:upToNotIncludingActiveController];
-   }
-
-   [self endUpdatesIfWasNecessaryToBegin];
-}
-
-- (void)movePageAtIndex:(NSUInteger)fromIndex toIndex:(NSUInteger)toIndex
-{
-   [self beginUpdatesIfNecessary];
-
-   NSUInteger indexOfActiveViewController = self.indexOfActiveViewController;
-
-   if (fromIndex == indexOfActiveViewController)
-   {
-      _indexOfActiveViewControllerAfterChanges = toIndex;
-   }
-   else if (fromIndex < indexOfActiveViewController && toIndex > indexOfActiveViewController)
-   {
-      _indexOfActiveViewControllerAfterChanges--;
-   }
-
-   [self endUpdatesIfWasNecessaryToBegin];
-}
-
-- (void)reloadPageAtIndex:(NSUInteger)index
-{
-   [self beginUpdatesIfNecessary];
-
-
-
-   [self endUpdatesIfWasNecessaryToBegin];
 }
 
 - (void)reloadData
@@ -814,7 +748,8 @@
       // controller
       else if ([_dataSource numberOfPagesInPageViewController:self] > 0)
       {
-         controllerToPresent = [_dataSource pageViewController:self viewControllerForPageAtIndex:0];
+         index = 0;
+         controllerToPresent = [_dataSource pageViewController:self viewControllerForPageAtIndex:index];
          direction           = IDDynamicPageViewControllerNavigationDirectionReverse;
       }
 
@@ -842,6 +777,13 @@
       [self setViewController:currentController
                     direction:IDDynamicPageViewControllerNavigationDirectionForward
                      animated:NO completion:nil];
+   }
+
+   @synchronized(_indexByControllerReference)
+   {
+      IDWeakObjectRepresentation * weakReference = [IDWeakObjectRepresentation weakRepresentationOfObject:_activeViewController];
+
+      _indexByControllerReference[weakReference] = @(index);
    }
 
    //[self updatePageControl];

@@ -291,17 +291,17 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 #pragma mark - Inserting, Deleting, and Moving Pages
 /// @name      Inserting, Deleting, and Moving Pages
 
+/// Call before changes are made to the data source.
+///
+/// Can be nested, in which case the controller will wait until all changes are
+/// complete before updating.
 - (void)beginUpdates;
 
+/// Call after changes are made to the data source.
+///
+/// Upon ending updates, the controller will call <reloadData>.
+/// @see reloadData
 - (void)endUpdates;
-
-- (void)insertPagesAtIndexes:(NSIndexSet *)indexes;
-
-- (void)deletePagesAtIndexes:(NSIndexSet *)indexes;
-
-- (void)movePageAtIndex:(NSUInteger)fromIndex toIndex:(NSUInteger)toIndex;
-
-- (void)reloadPageAtIndex:(NSUInteger)index;
 
 /// Reloads the view controllers and page control of the receiver.
 ///
