@@ -218,22 +218,22 @@
 
    // Any in-progress animation must be finished immediately. The animation will
    // be cancelled and its completion block called asynchronously.
-   if (_appearingViewController.view.layer.animationKeys.count > 0)
+   if (_otherViewController.view.layer.animationKeys.count > 0)
    {
-      [self removeViewController:_appearingViewController animated:YES];
+      [self removeViewController:_otherViewController animated:YES];
       [self didShowViewController:_activeViewController animated:YES];
 
-      [_appearingViewController.view.layer removeAllAnimations];
+      [_otherViewController.view.layer removeAllAnimations];
       [_activeViewController.view.layer removeAllAnimations];
 
       [self didFinishAnimating:YES
-        previousViewController:_appearingViewController
+        previousViewController:_otherViewController
            transitionCompleted:NO];
    }
 
-   // Set new view controller to _appearingViewController to set up the
+   // Set new view controller to _otherViewController to set up the
    // animations
-   _appearingViewController = viewController;
+   _otherViewController = viewController;
 
    [self willShowViewController:viewController animated:animated];
    [self willRemoveViewController:activeViewController animated:animated];
@@ -260,7 +260,7 @@
                         [self removeViewController:activeViewController animated:animated];
                         [self didShowViewController:viewController animated:animated];
 
-                        _appearingViewController = nil;
+                        _otherViewController = nil;
                         self.activeViewController = viewController;
                      }
 
@@ -277,7 +277,7 @@
                   }];
 
    // The new controller is now active
-   _appearingViewController  = activeViewController;
+   _otherViewController      = activeViewController;
    self.activeViewController = viewController;
 }
 
@@ -422,8 +422,8 @@
    }
    else if (_appearingControllerDirection != IDDynamicPageViewControllerNavigationDirectionNone)
    {
-      [self willRemoveViewController:_appearingViewController animated:NO];
-      [self removeViewController:_appearingViewController animated:NO];
+      [self willRemoveViewController:_otherViewController animated:NO];
+      [self removeViewController:_otherViewController animated:NO];
    }
 
    UIViewController * viewController;
@@ -466,7 +466,7 @@
    [containerView layoutIfNeeded];
 
    _appearingControllerDirection = direction;
-   _appearingViewController      = viewController;
+   _otherViewController          = viewController;
 }
 
 #pragma mark - View Controller Reuse
@@ -845,17 +845,17 @@
 
 - (void)applyTransformsInterpolatedTo:(CGFloat)interpolationRatio inDirection:(IDDynamicPageViewControllerNavigationDirection)direction
 {
-   if (_appearingViewController)
+   if (_otherViewController)
    {
-      CATransform3D activeControllerTransform = [self finalTransformForDisappearingViewController:_activeViewController
-                                                                                        direction:direction
-                                                                                   interpolatedTo:interpolationRatio];
-      CATransform3D appearingControllerTransform = [self initialTransformForAppearingViewController:_appearingViewController
+      CATransform3D activeControllerTransform = [self finalTransformForDisotherViewController:_activeViewController
+                                                                                    direction:direction
+                                                                               interpolatedTo:interpolationRatio];
+      CATransform3D appearingControllerTransform = [self initialTransformForAppearingViewController:_otherViewController
                                                                                           direction:direction
                                                                                      interpolatedTo:interpolationRatio];
 
-      _activeViewController.view.layer.transform    = activeControllerTransform;
-      _appearingViewController.view.layer.transform = appearingControllerTransform;
+      _activeViewController.view.layer.transform = activeControllerTransform;
+      _otherViewController.view.layer.transform  = appearingControllerTransform;
    }
    else
    {
@@ -909,7 +909,7 @@
                                        0.0f);
 }
 
-- (CATransform3D)finalTransformForDisappearingViewController:(UIViewController *)controller direction:(IDDynamicPageViewControllerNavigationDirection)direction interpolatedTo:(CGFloat)interpolationRatio
+- (CATransform3D)finalTransformForDisotherViewController:(UIViewController *)controller direction:(IDDynamicPageViewControllerNavigationDirection)direction interpolatedTo:(CGFloat)interpolationRatio
 {
    UIView * containerView = self.view;
    CGRect   bounds        = containerView.bounds;
@@ -1085,13 +1085,13 @@
    if (state == UIGestureRecognizerStateEnded)
    {
       CGFloat            finalInterpolationRatio = 0.0f;
-      UIViewController * appearingViewController = _appearingViewController;
+      UIViewController * otherViewController     = _otherViewController;
       UIViewController * activeViewController    = _activeViewController;
 
       // Only finish the transition if the gesture is still moving in the
       // direction of the page turn, and has either passed the distance or
       // velocity thresholds. Otherwise return to the previous controller
-      if (appearingViewController &&
+      if (otherViewController &&
           velocityOnCriticalAxis >= 0.0f &&
           (velocityOnCriticalAxis > _minimumGestureVelocityToChangeViewController ||
            interpolationRatio > _minimumGestureCompletionRatioToChangeViewController))
@@ -1102,12 +1102,12 @@
          // tell the active controller that it will be disappearing
          [self willRemoveViewController:activeViewController animated:YES];
 
-         [self willTransitionToViewController:appearingViewController];
+         [self willTransitionToViewController:otherViewController];
       }
       else
       {
-         [self didShowViewController:appearingViewController animated:YES];
-         [self willRemoveViewController:appearingViewController animated:YES];
+         [self didShowViewController:otherViewController animated:YES];
+         [self willRemoveViewController:otherViewController animated:YES];
       }
 
       _panGestureRecognizer.enabled = NO;
@@ -1124,23 +1124,23 @@
                         {
                            [self removeViewController:activeViewController
                                              animated:YES];
-                           [self didShowViewController:appearingViewController
+                           [self didShowViewController:otherViewController
                                               animated:YES];
 
                            activeViewController.view.layer.transform = CATransform3DIdentity;
 
-                           self.activeViewController = appearingViewController;
+                           self.activeViewController = otherViewController;
                         }
                         // Transition cancelled
                         else
                         {
-                           [self removeViewController:appearingViewController
+                           [self removeViewController:otherViewController
                                              animated:YES];
                         }
 
-                        appearingViewController.view.layer.transform = CATransform3DIdentity;
+                        otherViewController.view.layer.transform = CATransform3DIdentity;
 
-                        _appearingViewController = nil;
+                        _otherViewController = nil;
                         _appearingControllerDirection = IDDynamicPageViewControllerNavigationDirectionNone;
 
                         _panGestureRecognizer.enabled = YES;

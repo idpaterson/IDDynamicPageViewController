@@ -128,14 +128,13 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 @property (nonatomic, assign, readonly) NSUInteger indexOfActiveViewController;
 
 /// The view controller that will become active if the page transition gesture
-/// is completed.
+/// is completed, or that will be removed once the page transition finishes.
 ///
-/// When swiping, the `appearingViewController` corresponds to the controller in
+/// When swiping, the `otherViewController` corresponds to the controller in
 /// the direction of the swipe. Swiping forward then backward without releasing
-/// the drag will cause the `appearingViewController` to switch from the view
-/// controller after to the view controller before. This value is not set when
-/// scrolling programmatically.
-@property (nonatomic, strong, readonly) UIViewController * appearingViewController;
+/// the drag will cause the `otherViewController` to switch from the view
+/// controller after to the view controller before.
+@property (nonatomic, strong, readonly) UIViewController * otherViewController;
 
 /// Determines how the page controller transitions between pages.
 @property (nonatomic, assign) IDDynamicPageViewControllerTransitionStyle transitionStyle;
@@ -146,10 +145,6 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 /// The page control showing indicators corresponding to the current page and
 /// others in the data source.
 @property (nonatomic, strong, readonly) UIPageControl * pageControl;
-
-/// A `customViewControl` will be inserted into the page view controller
-/// layout in place of the <pageControl>
-@property (nonatomic, strong) UIView * customPageControl;
 
 /// Defines the location of the page control relative to the page view
 /// controller's bounds.
@@ -214,7 +209,7 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 /// @name      Gesture-based navigation
 
 /// The ratio at which releasing the pan gesture will activate the
-/// <appearingViewController>.
+/// <otherViewController>.
 ///
 /// Default is `0.3f` which corresponds to a pan translation covering at least
 /// 30% of the controller's dimension in the direction of the transition.
