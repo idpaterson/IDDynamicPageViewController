@@ -25,7 +25,8 @@
 
 /// Used to specify the position of the <pageControl> element with respect to
 /// the content of the page view controller.
-typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerPageControlPosition) {
+typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerPageControlPosition)
+{
    /// The page control is not shown.
    IDDynamicPageViewControllerPageControlPositionNone,
    /// The page control is at the top of the view
@@ -90,7 +91,9 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 
 #pragma mark Interaction support
 
+   UIView                 * _controllerContainerView;
    UIPanGestureRecognizer * _panGestureRecognizer;
+   NSLayoutConstraint     * _pageControlAppearanceConstraint;
    IDDynamicPageViewControllerNavigationDirection _appearingControllerDirection;
 }
 

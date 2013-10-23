@@ -16,7 +16,8 @@
 
 @implementation IDDynamicPageViewController
 
-@synthesize dataSource = _dataSource;
+@synthesize dataSource = _dataSource,
+pageControl            = _pageControl;
 
 #pragma mark - Initialization
 
@@ -67,13 +68,38 @@
 {
    [super viewDidLoad];
 
-   UIView * containerView = self.view;
+   UIView * controllerView = self.view;
+   _controllerContainerView = [[UIView alloc] initWithFrame:controllerView.bounds];
+   _pageControl             = [[UIPageControl alloc] initWithFrame:controllerView.bounds];
 
    _panGestureRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePanGesture:)];
 
    _panGestureRecognizer.delaysTouchesBegan = YES;
 
-   [containerView addGestureRecognizer:_panGestureRecognizer];
+   [controllerView addGestureRecognizer:_panGestureRecognizer];
+
+   _controllerContainerView.translatesAutoresizingMaskIntoConstraints = NO;
+   _pageControl.translatesAutoresizingMaskIntoConstraints             = NO;
+
+   [controllerView addSubview:_controllerContainerView];
+   [controllerView addSubview:_pageControl];
+
+   NSArray      * constraints;
+   NSDictionary * views;
+
+   views = NSDictionaryOfVariableBindings(_controllerContainerView);
+
+   constraints = [NSLayoutConstraint
+                  constraintsWithVisualFormat:@"H:|[_controllerContainerView]|"
+                  options:0 metrics:nil views:views];
+   [controllerView addConstraints:constraints];
+
+   constraints = [NSLayoutConstraint
+                  constraintsWithVisualFormat:@"V:|[_controllerContainerView]"
+                  options:0 metrics:nil views:views];
+   [controllerView addConstraints:constraints];
+
+   [self updatePageControlLayout];
 }
 
 #pragma mark - Child view controller management
@@ -97,7 +123,7 @@
 
       UIView * controllerView = viewController.view;
       [viewController beginAppearanceTransition:isAppearing animated:animated];
-      [self.view addSubview:controllerView];
+      [_controllerContainerView addSubview:controllerView];
    }
    else
    {
@@ -125,7 +151,7 @@
       }
    }
 
-   viewController.view.frame = self.view.bounds;
+   viewController.view.frame = _controllerContainerView.bounds;
 
    [self beginAppearanceTransition:YES forViewController:viewController animated:animated];
    [self applyConstraintsForChildViewController:viewController];
@@ -311,6 +337,8 @@
 
    _previousObject = [_dataSource pageViewController:self objectAtIndex:index - 1];
    _nextObject     = [_dataSource pageViewController:self objectAtIndex:index + 1];
+
+   [self updatePageControl];
 }
 
 #pragma mark Object-based navigation
@@ -456,7 +484,6 @@
       return;
    }
 
-   UIView * containerView  = self.view;
    UIView * controllerView = viewController.view;
 
    // The active controller is not disappearing yet; the disappearing will be
@@ -467,10 +494,10 @@
    // to support stack navigation.
    if (direction == IDDynamicPageViewControllerNavigationDirectionReverse)
    {
-      [containerView sendSubviewToBack:controllerView];
+      [_controllerContainerView sendSubviewToBack:controllerView];
    }
 
-   [containerView layoutIfNeeded];
+   [_controllerContainerView layoutIfNeeded];
 
    _appearingControllerDirection = direction;
    _otherViewController          = viewController;
@@ -748,7 +775,7 @@
       // controller
       else if ([_dataSource numberOfPagesInPageViewController:self] > 0)
       {
-         index = 0;
+         index               = 0;
          controllerToPresent = [_dataSource pageViewController:self viewControllerForPageAtIndex:index];
          direction           = IDDynamicPageViewControllerNavigationDirectionReverse;
       }
@@ -785,10 +812,103 @@
 
       _indexByControllerReference[weakReference] = @(index);
    }
-
-   //[self updatePageControl];
 }
 
+#pragma mark - Page control
+
+- (UIPageControl *)pageControl
+{
+   if (!_pageControl)
+   {
+      _pageControl = [UIPageControl new];
+   }
+
+   return _pageControl;
+}
+
+- (void)setPageControlPosition:(IDDynamicPageViewControllerPageControlPosition)pageControlPosition
+{
+   if (pageControlPosition == _pageControlPosition)
+   {
+      return;
+   }
+
+   [self willChangeValueForKey:@"pageControlPosition"];
+   _pageControlPosition = pageControlPosition;
+   [self didChangeValueForKey:@"pageControlPosition"];
+
+   [self updatePageControlLayout];
+}
+
+- (void)updatePageControl
+{
+   NSUInteger numberOfPages = [_dataSource numberOfPagesInPageViewController:self];
+
+   _pageControl.numberOfPages = numberOfPages;
+   _pageControl.currentPage   = self.indexOfActiveViewController;
+}
+
+- (void)updatePageControlLayout
+{
+   NSLayoutConstraint * constraint;
+   NSArray            * constraints;
+   NSDictionary       * views;
+   UIView             * parentView = self.view;
+
+   // Remove any existing constraints
+   [_pageControl removeFromSuperview];
+   [parentView addSubview:_pageControl];
+
+   views = NSDictionaryOfVariableBindings(_pageControl,
+                                          _controllerContainerView);
+
+   constraints = [NSLayoutConstraint
+                  constraintsWithVisualFormat:@"H:|[_pageControl]|"
+                  options:0 metrics:nil views:views];
+   [parentView addConstraints:constraints];
+
+   if (_pageControlOverlaysContent)
+   {
+      constraints = [NSLayoutConstraint
+                     constraintsWithVisualFormat:@"V:[_controllerContainerView]|"
+                     options:0 metrics:nil views:views];
+      [parentView addConstraints:constraints];
+   }
+   else
+   {
+      constraints = [NSLayoutConstraint
+                     constraintsWithVisualFormat:@"V:[_controllerContainerView][_pageControl]"
+                     options:0 metrics:nil views:views];
+      [parentView addConstraints:constraints];
+   }
+
+   constraint = [NSLayoutConstraint
+                 constraintWithItem:_pageControl
+                 attribute:NSLayoutAttributeBottom
+                 relatedBy:NSLayoutRelationEqual
+                 toItem:parentView
+                 attribute:NSLayoutAttributeBottom
+                 multiplier:1.0f constant:0.0f];
+   _pageControlAppearanceConstraint = constraint;
+   [parentView addConstraint:constraint];
+}
+
+- (void)setPageControlHidden:(BOOL)hidden
+{
+   CGFloat bottomOffset = 0.0f;
+   CGFloat alpha        = 1.0f;
+
+   if (hidden)
+   {
+      bottomOffset = -_pageControl.intrinsicContentSize.height;
+      alpha        = 0.0f;
+   }
+
+   _pageControlAppearanceConstraint.constant = bottomOffset;
+   _pageControl.alpha = alpha;
+
+   [self.view layoutIfNeeded];
+}
 
 #pragma mark - Layout
 
@@ -818,9 +938,8 @@
 
 - (CATransform3D)initialTransformForAppearingViewController:(UIViewController *)controller direction:(IDDynamicPageViewControllerNavigationDirection)direction interpolatedTo:(CGFloat)interpolationRatio
 {
-   UIView * containerView = self.view;
-   CGRect   bounds        = containerView.bounds;
-   CGSize   offset        = bounds.size;
+   CGRect bounds = _controllerContainerView.bounds;
+   CGSize offset = bounds.size;
 
    switch (_navigationOrientation)
    {
@@ -860,9 +979,8 @@
 
 - (CATransform3D)finalTransformForDisotherViewController:(UIViewController *)controller direction:(IDDynamicPageViewControllerNavigationDirection)direction interpolatedTo:(CGFloat)interpolationRatio
 {
-   UIView * containerView = self.view;
-   CGRect   bounds        = containerView.bounds;
-   CGSize   offset        = bounds.size;
+   CGRect bounds = _controllerContainerView.bounds;
+   CGSize offset = bounds.size;
 
    switch (_navigationOrientation)
    {
@@ -902,9 +1020,8 @@
 
 - (CATransform3D)finalTransformForBouncingViewController:(UIViewController *)controller direction:(IDDynamicPageViewControllerNavigationDirection)direction interpolatedTo:(CGFloat)interpolationRatio
 {
-   UIView * containerView = self.view;
-   CGRect   bounds        = containerView.bounds;
-   CGSize   offset        = bounds.size;
+   CGRect bounds = _controllerContainerView.bounds;
+   CGSize offset = bounds.size;
 
    switch (_navigationOrientation)
    {
@@ -938,7 +1055,6 @@
 - (void)applyConstraintsForChildViewController:(UIViewController *)viewController
 {
    NSLayoutConstraint * constraint;
-   UIView             * containerView  = self.view;
    UIView             * controllerView = viewController.view;
 
    controllerView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -947,37 +1063,37 @@
                  constraintWithItem:controllerView
                  attribute:NSLayoutAttributeWidth
                  relatedBy:NSLayoutRelationEqual
-                 toItem:containerView
+                 toItem:_controllerContainerView
                  attribute:NSLayoutAttributeWidth
                  multiplier:1.0f constant:0.0f];
-   [containerView addConstraint:constraint];
+   [_controllerContainerView addConstraint:constraint];
 
    constraint = [NSLayoutConstraint
                  constraintWithItem:controllerView
                  attribute:NSLayoutAttributeHeight
                  relatedBy:NSLayoutRelationEqual
-                 toItem:containerView
+                 toItem:_controllerContainerView
                  attribute:NSLayoutAttributeHeight
                  multiplier:1.0f constant:0.0f];
-   [containerView addConstraint:constraint];
+   [_controllerContainerView addConstraint:constraint];
 
    constraint = [NSLayoutConstraint
                  constraintWithItem:controllerView
                  attribute:NSLayoutAttributeCenterX
                  relatedBy:NSLayoutRelationEqual
-                 toItem:containerView
+                 toItem:_controllerContainerView
                  attribute:NSLayoutAttributeCenterX
                  multiplier:1.0f constant:0.0f];
-   [containerView addConstraint:constraint];
+   [_controllerContainerView addConstraint:constraint];
 
    constraint = [NSLayoutConstraint
                  constraintWithItem:controllerView
                  attribute:NSLayoutAttributeCenterY
                  relatedBy:NSLayoutRelationEqual
-                 toItem:containerView
+                 toItem:_controllerContainerView
                  attribute:NSLayoutAttributeCenterY
                  multiplier:1.0f constant:0.0f];
-   [containerView addConstraint:constraint];
+   [_controllerContainerView addConstraint:constraint];
 }
 
 #pragma mark - Gesture handling
@@ -989,12 +1105,11 @@
       return;
    }
 
-   UIView                 * containerView = self.view;
-   UIGestureRecognizerState state         = panGesture.state;
-   CGPoint translation = [_panGestureRecognizer translationInView:containerView];
-   CGPoint velocity    = [_panGestureRecognizer velocityInView:containerView];
+   UIGestureRecognizerState state = panGesture.state;
+   CGPoint translation            = [_panGestureRecognizer translationInView:_controllerContainerView];
+   CGPoint velocity               = [_panGestureRecognizer velocityInView:_controllerContainerView];
    IDDynamicPageViewControllerNavigationDirection direction;
-   CGRect  bounds                 = containerView.bounds;
+   CGRect  bounds                 = _controllerContainerView.bounds;
    CGFloat interpolationRatio     = 0.0f;
    CGFloat velocityOnCriticalAxis = 0.0f;
 
@@ -1126,8 +1241,6 @@
    UIViewController * activeViewController = self.activeViewController;
    
    IDLogInfo(@"Controller %@ is now active", activeViewController);
-   
-   //[self updatePageControl];
    
    if ([_delegate respondsToSelector:@selector(pageViewController:didFinishAnimating:previousViewController:transitionCompleted:)])
    {
