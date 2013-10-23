@@ -1,0 +1,20 @@
+//
+//  IDDynamicPageViewControllerTests-Prefix.pch
+//  IDDynamicPageViewControllerDemo
+//
+//  Created by Ian Paterson on 10/18/13.
+//  Copyright (c) 2013 Ian Paterson. All rights reserved.
+//
+
+#ifndef IDDynamicPageViewControllerDemo_IDDynamicPageViewControllerTests_Prefix_pch
+#define IDDynamicPageViewControllerDemo_IDDynamicPageViewControllerTests_Prefix_pch
+
+#define HC_SHORTHAND
+#import <OCHamcrest/OCHamcrest.h>
+
+#define MOCKITO_SHORTHAND
+#import <OCMockito/OCMockito.h>
+
+#import "AssertEventually.h"
+
+#endif

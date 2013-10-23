@@ -1,0 +1,3 @@
+[submodule "IDDynamicPageViewControllerTests/dependencies/AssertEventually"]
+	path = IDDynamicPageViewControllerTests/dependencies/AssertEventually
+	url = https://gist.github.com/6935883.git
