@@ -954,11 +954,8 @@
 
    assertThat(pageViewController.activeViewController, isNot(equalTo(viewController)));
 
-   id         currentObject = [pageViewController objectForViewController:pageViewController.activeViewController];
-   NSUInteger currentIndex  = [dataSource indexOfObject:currentObject];
-
    // The default first object is shown when all neighbors are removed
-   assertThat(@(currentIndex), equalTo(@0));
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@0));
 
    // Due to the magic that makes removal work, the original controller is not
    // removed synchronously, and it should not be reused because it was just
