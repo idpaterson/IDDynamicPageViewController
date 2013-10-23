@@ -75,6 +75,8 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
    NSMutableDictionary * _controllerClassByReuseIdentifier;
    NSMutableDictionary * _reusableControllerQueueByReuseIdentifier;
    NSMutableDictionary * _activeControllerSetByReuseIdentifier;
+   NSMutableDictionary * _reuseIdentifierByControllerReference;
+   NSMutableDictionary * _indexByControllerReference;
    NSMutableDictionary * _viewControllerReferenceByObjectReference;
    NSMutableDictionary * _objectReferenceByViewControllerReference;
 
@@ -274,7 +276,7 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 /// @param reuseIdentifier The reuse identifier for the specifxied controller.
 /// This parameter must not be `nil`.
 /// @param object The object that the controller will represent.
-- (UIViewController *)dequeueReusableViewControllerWithReuseIdentifier:(NSString *)reuseIdentifier forObject:(id)object;
+- (UIViewController *)dequeueReusableViewControllerWithReuseIdentifier:(NSString *)reuseIdentifier forObject:(id)object atIndex:(NSUInteger)index;
 
 /// Returns the view controller currently representing the specified object if
 /// any exist.
@@ -442,6 +444,14 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 ///
 /// @return The index or `NSNotFound` if the object is not in the data source
 - (NSUInteger)pageViewController:(IDDynamicPageViewController *)pageViewController indexOfObject:(id)object;
+
+/// Returns the object at the specified index in the data source. (required)
+///
+/// @param pageViewController The page view controller
+/// @param index              An index in the data source
+///
+/// @return The object or `nil` if the object is not in the data source
+- (id)pageViewController:(IDDynamicPageViewController *)pageViewController objectAtIndex:(NSUInteger)index;
 
 @optional
 

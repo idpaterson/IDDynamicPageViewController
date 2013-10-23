@@ -22,9 +22,10 @@
 
 - (void)setup
 {
-   _controllerClassByReuseIdentifier         = [NSMutableDictionary new];
+   _controllerClassByReuseIdentifier         = [NSMutableDictionary dictionary];
    _reusableControllerQueueByReuseIdentifier = [NSMutableDictionary new];
-   _activeControllerSetByReuseIdentifier     = [NSMutableDictionary new];
+   _reuseIdentifierByControllerReference     = [NSMutableDictionary new];
+   _indexByControllerReference               = [NSMutableDictionary new];
    _viewControllerReferenceByObjectReference = [NSMutableDictionary new];
    _objectReferenceByViewControllerReference = [NSMutableDictionary new];
 
@@ -111,6 +112,19 @@
 
 - (void)willShowViewController:(UIViewController *)viewController animated:(BOOL)animated
 {
+   @synchronized(_reusableControllerQueueByReuseIdentifier)
+   {
+      NSString            * reuseIdentifier = [self reuseIdentifierForViewController:viewController];
+      NSMutableOrderedSet * reuseQueue      = _reusableControllerQueueByReuseIdentifier[reuseIdentifier];
+
+      if ([reuseQueue containsObject:viewController])
+      {
+         [reuseQueue removeObject:viewController];
+
+         IDLogInfo(@"Controller %@ is no longer reusable", viewController);
+      }
+   }
+
    viewController.view.frame = self.view.bounds;
 
    [self beginAppearanceTransition:YES forViewController:viewController animated:animated];
@@ -129,9 +143,34 @@
 
 - (void)removeViewController:(UIViewController *)viewController animated:(BOOL)animated
 {
+   if (!viewController)
+   {
+      return;
+   }
+
    [viewController.view removeFromSuperview];
    [viewController endAppearanceTransition];
    [viewController removeFromParentViewController];
+
+   @synchronized(_reusableControllerQueueByReuseIdentifier)
+   {
+      NSString * reuseIdentifier = [self reuseIdentifierForViewController:viewController];
+
+      if (reuseIdentifier)
+      {
+         NSMutableOrderedSet * reuseQueue = _reusableControllerQueueByReuseIdentifier[reuseIdentifier];
+
+         if (!reuseQueue)
+         {
+            reuseQueue = [NSMutableOrderedSet new];
+            _reusableControllerQueueByReuseIdentifier[reuseIdentifier] = reuseQueue;
+         }
+
+         [reuseQueue addObject:viewController];
+
+         IDLogInfo(@"Controller %@ is now reusable", viewController);
+      }
+   }
 }
 
 - (void)animateWithDuration:(NSTimeInterval)duration options:(UIViewAnimationOptions)options animations:(void (^)(void))animations completion:(void (^)(BOOL finished))completion
@@ -222,7 +261,7 @@
                         [self didShowViewController:viewController animated:animated];
 
                         _appearingViewController = nil;
-                        _activeViewController = viewController;
+                        self.activeViewController = viewController;
                      }
 
                      _panGestureRecognizer.enabled = YES;
@@ -238,8 +277,8 @@
                   }];
 
    // The new controller is now active
-   _appearingViewController = activeViewController;
-   _activeViewController    = viewController;
+   _appearingViewController  = activeViewController;
+   self.activeViewController = viewController;
 }
 
 - (void)setDefaultViewController
@@ -254,6 +293,24 @@
                     direction:IDDynamicPageViewControllerNavigationDirectionForward
                      animated:NO completion:nil];
    }
+}
+
+- (void)setActiveViewController:(UIViewController *)activeViewController
+{
+   // Already active
+   if ([_activeViewController isEqual:activeViewController])
+   {
+      return;
+   }
+
+   [self willChangeValueForKey:@"activeViewController"];
+   _activeViewController = activeViewController;
+   [self didChangeValueForKey:@"activeViewController"];
+
+   NSUInteger index = self.indexOfActiveViewController;
+
+   _previousObject = [_dataSource pageViewController:self objectAtIndex:index - 1];
+   _nextObject     = [_dataSource pageViewController:self objectAtIndex:index + 1];
 }
 
 #pragma mark Object-based navigation
@@ -320,6 +377,11 @@
    }
 
    return nil;
+}
+
+- (NSUInteger)indexOfActiveViewController
+{
+   return [_dataSource pageViewController:self indexOfObject:self.activeObject];
 }
 
 #pragma mark Populating from the data source
@@ -519,9 +581,43 @@
       _viewControllerReferenceByObjectReference[weakObject] = weakController;
    }
 
+   // Record the reuse identifier
+   @synchronized(_reuseIdentifierByControllerReference)
+   {
+      IDWeakObjectRepresentation * weakReference = [IDWeakObjectRepresentation weakRepresentationOfObject:viewController];
+
+      _reuseIdentifierByControllerReference[weakReference] = reuseIdentifier;
+   }
+
    IDLogInfo(@"Created a new controller %@ to represent %@", viewController, object);
 
    return viewController;
+}
+
+- (NSString *)reuseIdentifierForViewController:(UIViewController *)viewController
+{
+   @synchronized(_reuseIdentifierByControllerReference)
+   {
+      IDWeakObjectRepresentation * weakReference = [IDWeakObjectRepresentation weakRepresentationOfObject:viewController];
+
+      return _reuseIdentifierByControllerReference[weakReference];
+   }
+}
+
+- (NSUInteger)indexForViewController:(UIViewController *)viewController
+{
+   @synchronized(_indexByControllerReference)
+   {
+      IDWeakObjectRepresentation * weakReference = [IDWeakObjectRepresentation weakRepresentationOfObject:viewController];
+      NSNumber * indexNumber = _indexByControllerReference[weakReference];
+
+      if (indexNumber)
+      {
+         return indexNumber.unsignedIntegerValue;
+      }
+
+      return NSNotFound;
+   }
 }
 
 - (void)registerClass:(Class)viewControllerClass forViewControllerWithReuseIdentifier:(NSString *)reuseIdentifier
@@ -538,7 +634,7 @@
    }
 }
 
-- (UIViewController *)dequeueReusableViewControllerWithReuseIdentifier:(NSString *)reuseIdentifier forObject:(id)object
+- (UIViewController *)dequeueReusableViewControllerWithReuseIdentifier:(NSString *)reuseIdentifier forObject:(id)object atIndex:(NSUInteger)index
 {
    NSAssert(reuseIdentifier != nil, @"Reuse identifier cannot be nil");
    NSAssert(object != nil, @"Object cannot be nil");
@@ -559,18 +655,11 @@
                                             byAssociatingWithObject:object];
    }
 
-   // Record the controller as active
-   @synchronized(_activeControllerSetByReuseIdentifier)
+   @synchronized(_indexByControllerReference)
    {
-      NSMutableSet * controllerSet = _activeControllerSetByReuseIdentifier[reuseIdentifier];
+      IDWeakObjectRepresentation * weakReference = [IDWeakObjectRepresentation weakRepresentationOfObject:viewController];
 
-      if (!controllerSet)
-      {
-         controllerSet = [NSMutableSet set];
-         _activeControllerSetByReuseIdentifier[reuseIdentifier] = controllerSet;
-      }
-
-      [controllerSet addObject:viewController];
+      _indexByControllerReference[weakReference] = @(index);
    }
 
    return viewController;
@@ -583,7 +672,7 @@
 {
    if (++_updateLevel == 1)
    {
-      _indexOfActiveViewControllerAfterChanges = _indexOfActiveViewController;
+      _indexOfActiveViewControllerAfterChanges = [self indexOfActiveViewController];
    }
 }
 
@@ -591,8 +680,15 @@
 {
    if (--_updateLevel == 0)
    {
-      _indexOfActiveViewController             = _indexOfActiveViewControllerAfterChanges;
+      @synchronized(_indexByControllerReference)
+      {
+         IDWeakObjectRepresentation * weakReference = [IDWeakObjectRepresentation weakRepresentationOfObject:_activeViewController];
+
+         _indexByControllerReference[weakReference] = @(_indexOfActiveViewControllerAfterChanges);
+      }
       _indexOfActiveViewControllerAfterChanges = NSNotFound;
+
+      [self reloadData];
    }
 }
 
@@ -620,7 +716,7 @@
 {
    [self beginUpdatesIfNecessary];
 
-   NSRange upToActiveController = NSMakeRange(0, _indexOfActiveViewController);
+   NSRange upToActiveController = NSMakeRange(0, self.indexOfActiveViewController);
 
    _indexOfActiveViewControllerAfterChanges += [indexes countOfIndexesInRange:upToActiveController];
 
@@ -631,13 +727,13 @@
 {
    [self beginUpdatesIfNecessary];
 
-   if ([indexes containsIndex:_indexOfActiveViewController])
+   if ([indexes containsIndex:self.indexOfActiveViewController])
    {
 
    }
    else
    {
-      NSRange upToNotIncludingActiveController = NSMakeRange(0, _indexOfActiveViewController - 1);
+      NSRange upToNotIncludingActiveController = NSMakeRange(0, self.indexOfActiveViewController - 1);
       _indexOfActiveViewControllerAfterChanges -= [indexes countOfIndexesInRange:upToNotIncludingActiveController];
    }
 
@@ -648,11 +744,13 @@
 {
    [self beginUpdatesIfNecessary];
 
-   if (fromIndex == _indexOfActiveViewController)
+   NSUInteger indexOfActiveViewController = self.indexOfActiveViewController;
+
+   if (fromIndex == indexOfActiveViewController)
    {
       _indexOfActiveViewControllerAfterChanges = toIndex;
    }
-   else if (fromIndex < _indexOfActiveViewController && toIndex > _indexOfActiveViewController)
+   else if (fromIndex < indexOfActiveViewController && toIndex > indexOfActiveViewController)
    {
       _indexOfActiveViewControllerAfterChanges--;
    }
@@ -667,6 +765,79 @@
 
 
    [self endUpdatesIfWasNecessaryToBegin];
+}
+
+- (void)reloadData
+{
+   UIViewController * currentController = self.activeViewController;
+   id                 object            = self.activeObject;
+   NSUInteger         index             = [_dataSource pageViewController:self indexOfObject:object];
+
+   // The controller no longer exists, show the current one instead
+   if (index == NSNotFound)
+   {
+      __weak IDDynamicPageViewController           * weakSelf            = self;
+      UIViewController                             * controllerToPresent = nil;
+      IDDynamicPageViewControllerNavigationDirection direction;
+
+      // There was an object before the controller, check if it's still in the
+      // data source.
+      if (_previousObject)
+      {
+         index     = [_dataSource pageViewController:self indexOfObject:_previousObject];
+         object    = _previousObject;
+         direction = IDDynamicPageViewControllerNavigationDirectionReverse;
+      }
+
+      // If not, maybe the object that was after the controller
+      if (index == NSNotFound && _nextObject)
+      {
+         index     = [_dataSource pageViewController:self indexOfObject:_nextObject];
+         object    = _nextObject;
+         direction = IDDynamicPageViewControllerNavigationDirectionForward;
+      }
+
+      // Either the previous or next still exists in the data source, so we'll
+      // show a controller close to where the user was before.
+      if (index != NSNotFound)
+      {
+         controllerToPresent = [_dataSource pageViewController:self viewControllerForObject:object];
+      }
+      // Otherwise everything we know is lost so we'll just show the default
+      // controller
+      else if ([_dataSource numberOfPagesInPageViewController:self] > 0)
+      {
+         controllerToPresent = [_dataSource pageViewController:self viewControllerForPageAtIndex:0];
+         direction           = IDDynamicPageViewControllerNavigationDirectionReverse;
+      }
+
+      // Fade the controller out so that it looks like it is disappearing.
+      [UIView animateWithDuration:0.15
+                       animations:^{
+                          currentController.view.alpha = 0.0f;
+                       }];
+
+      [self setViewController:controllerToPresent
+                    direction:direction animated:YES
+                   completion:^(BOOL completed)
+       {
+          IDDynamicPageViewController * strongSelf = weakSelf;
+
+          if (strongSelf)
+          {
+             // Reset last controller to 100% opacity
+             currentController.view.alpha = 1.0f;
+          }
+       }];
+   }
+   else
+   {
+      [self setViewController:currentController
+                    direction:IDDynamicPageViewControllerNavigationDirectionForward
+                     animated:NO completion:nil];
+   }
+
+   //[self updatePageControl];
 }
 
 
@@ -958,7 +1129,7 @@
 
                            activeViewController.view.layer.transform = CATransform3DIdentity;
 
-                           _activeViewController = appearingViewController;
+                           self.activeViewController = appearingViewController;
                         }
                         // Transition cancelled
                         else
@@ -1004,55 +1175,8 @@
 - (void)didFinishAnimating:(BOOL)finished previousViewController:(UIViewController *)previousViewController transitionCompleted:(BOOL)completed
 {
    UIViewController * activeViewController = self.activeViewController;
-
-   //id currentObject = _objectByViewController[currentViewController];
-
-   if (![activeViewController isEqual:previousViewController])
-   {
-      UIViewController * viewControllerBefore = [_dataSource pageViewController:self viewControllerBeforeViewController:activeViewController];
-      UIViewController * viewControllerAfter  = [_dataSource pageViewController:self viewControllerAfterViewController:activeViewController];
-
-      _previousObject = [self objectForViewController:viewControllerBefore];
-      _nextObject     = [self objectForViewController:viewControllerAfter];
-   }
-
+   
    IDLogInfo(@"Controller %@ is now active", activeViewController);
-
-   @synchronized(_reusableControllerQueueByReuseIdentifier)
-   {
-      @synchronized(_activeControllerSetByReuseIdentifier)
-      {
-         [_activeControllerSetByReuseIdentifier enumerateKeysAndObjectsUsingBlock:^(NSString * reuseIdentifier, NSMutableSet * viewControllers, BOOL * stop) {
-            NSMutableOrderedSet * reuseQueue = _reusableControllerQueueByReuseIdentifier[reuseIdentifier];
-
-            if (!reuseQueue)
-            {
-               reuseQueue = [NSMutableOrderedSet new];
-               _reusableControllerQueueByReuseIdentifier[reuseIdentifier] = reuseQueue;
-            }
-
-            // Iterate a copy of viewControllers, because we're going to remove
-            // items that are no longer active.
-            for (UIViewController * viewController in [NSSet setWithSet:viewControllers])
-            {
-               // The current view controller is no longer reusable
-               if ([viewController isEqual:activeViewController])
-               {
-                  [reuseQueue removeObject:viewController];
-
-                  IDLogInfo(@"Controller %@ is no longer reusable", viewController);
-               }
-               // Any other controller is
-               else
-               {
-                  [reuseQueue addObject:viewController];
-                  
-                  IDLogInfo(@"Controller %@ is now reusable", viewController);
-               }
-            }
-         }];
-      }
-   }
    
    //[self updatePageControl];
    

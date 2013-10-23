@@ -152,7 +152,9 @@
          reuseIdentifier = _reuseIdentifierBlock(object, _pageViewController, index);
       }
 
-      UIViewController * controller = [_pageViewController dequeueReusableViewControllerWithReuseIdentifier:reuseIdentifier forObject:object];
+      UIViewController * controller = [_pageViewController dequeueReusableViewControllerWithReuseIdentifier:reuseIdentifier
+                                                                                                  forObject:object
+                                                                                                    atIndex:index];
 
       if (_configureViewControllerBlock)
       {
@@ -252,6 +254,16 @@
    }
 
    return [self indexOfObject:object];
+}
+
+- (id)pageViewController:(IDDynamicPageViewController *)pageViewController objectAtIndex:(NSUInteger)index
+{
+   if (pageViewController)
+   {
+      _pageViewController = pageViewController;
+   }
+
+   return [self objectAtIndex:index];
 }
 
 - (NSInteger)numberOfPagesInPageViewController:(IDDynamicPageViewController *)pageViewController
