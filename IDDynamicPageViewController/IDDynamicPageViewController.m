@@ -34,7 +34,7 @@ pageControl            = _pageControl;
    _interPageSpacing  = 0.0f;
    _minimumGestureCompletionRatioToChangeViewController = 0.3f;
    _minimumGestureVelocityToChangeViewController        = 100.0f;
-   _transitionStyle = IDDynamicPageViewControllerTransitionStyleStack;
+   _transitionStyle = IDDynamicPageViewControllerTransitionStyleScroll;
 }
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
@@ -228,11 +228,6 @@ pageControl            = _pageControl;
 
 - (void)setViewController:(UIViewController *)viewController direction:(IDDynamicPageViewControllerNavigationDirection)direction animated:(BOOL)animated completion:(void (^)(BOOL))completion
 {
-   if (!viewController || [_activeViewController isEqual:viewController])
-   {
-      return;
-   }
-
    // Do not animate the initial controller
    if (!_activeViewController)
    {
@@ -241,6 +236,18 @@ pageControl            = _pageControl;
 
    UIViewController * activeViewController = _activeViewController;
    NSTimeInterval     duration             = animated ? _animationDuration : 0.0;
+
+   if (!viewController || [activeViewController isEqual:viewController])
+   {
+      [self animateWithDuration:duration
+                        options:(UIViewAnimationOptionCurveEaseOut)
+                     animations:^{
+                        [self updatePageControl];
+                     }
+                     completion:nil];
+
+      return;
+   }
 
    // Any in-progress animation must be finished immediately. The animation will
    // be cancelled and its completion block called asynchronously.
@@ -278,6 +285,11 @@ pageControl            = _pageControl;
                   animations:^{
                      [self applyTransformsInterpolatedTo:1.0f
                                              inDirection:direction];
+
+                     // The new controller is now active, update it with an
+                     // animated page dot or layout transition
+                     _otherViewController      = activeViewController;
+                     self.activeViewController = viewController;
                   }
                   completion:^(BOOL completed) {
                      // If interrupted, these have already been called.
@@ -287,7 +299,6 @@ pageControl            = _pageControl;
                         [self didShowViewController:viewController animated:animated];
 
                         _otherViewController = nil;
-                        self.activeViewController = viewController;
                      }
 
                      _panGestureRecognizer.enabled = YES;
@@ -301,10 +312,6 @@ pageControl            = _pageControl;
                         completion(completed);
                      }
                   }];
-
-   // The new controller is now active
-   _otherViewController      = activeViewController;
-   self.activeViewController = viewController;
 }
 
 - (void)setDefaultViewController
@@ -843,9 +850,16 @@ pageControl            = _pageControl;
 - (void)updatePageControl
 {
    NSUInteger numberOfPages = [_dataSource numberOfPagesInPageViewController:self];
+   BOOL       needsLayout   = (numberOfPages == 0) != (_pageControl.numberOfPages == 0);
 
    _pageControl.numberOfPages = numberOfPages;
    _pageControl.currentPage   = self.indexOfActiveViewController;
+
+   if (needsLayout)
+   {
+      [self updatePageControlLayout];
+      [self.view layoutIfNeeded];
+   }
 }
 
 - (void)updatePageControlLayout
@@ -891,23 +905,6 @@ pageControl            = _pageControl;
                  multiplier:1.0f constant:0.0f];
    _pageControlAppearanceConstraint = constraint;
    [parentView addConstraint:constraint];
-}
-
-- (void)setPageControlHidden:(BOOL)hidden
-{
-   CGFloat bottomOffset = 0.0f;
-   CGFloat alpha        = 1.0f;
-
-   if (hidden)
-   {
-      bottomOffset = -_pageControl.intrinsicContentSize.height;
-      alpha        = 0.0f;
-   }
-
-   _pageControlAppearanceConstraint.constant = bottomOffset;
-   _pageControl.alpha = alpha;
-
-   [self.view layoutIfNeeded];
 }
 
 #pragma mark - Layout
@@ -1181,6 +1178,13 @@ pageControl            = _pageControl;
                      animations:^{
                         [self applyTransformsInterpolatedTo:finalInterpolationRatio
                                                 inDirection:direction];
+
+                        // Update the active controller with animated page dot
+                        // transition
+                        if (finalInterpolationRatio > 0.5f)
+                        {
+                           self.activeViewController = otherViewController;
+                        }
                      }
                      completion:^(BOOL completed) {
                         // Transition finished
@@ -1192,8 +1196,6 @@ pageControl            = _pageControl;
                                               animated:YES];
 
                            activeViewController.view.layer.transform = CATransform3DIdentity;
-
-                           self.activeViewController = otherViewController;
                         }
                         // Transition cancelled
                         else
