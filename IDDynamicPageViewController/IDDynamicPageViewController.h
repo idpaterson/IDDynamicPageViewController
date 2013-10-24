@@ -69,6 +69,8 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 
 @interface IDDynamicPageViewController : IDDPVC_SUPERCLASS
 {
+   UIPageControl * _pageControl;
+
 @private
 #pragma mark - ivars
 #pragma mark Controller management and reuse ivars
@@ -93,8 +95,11 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 
    UIView                 * _controllerContainerView;
    UIPanGestureRecognizer * _panGestureRecognizer;
-   NSLayoutConstraint     * _pageControlAppearanceConstraint;
    IDDynamicPageViewControllerNavigationDirection _appearingControllerDirection;
+
+#pragma mark Layout
+
+   NSArray * _pageControlLayoutConstraints;
 }
 
 #pragma mark - Initialization
@@ -147,6 +152,15 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 
 /// The page control showing indicators corresponding to the current page and
 /// others in the data source.
+///
+/// To use a subclass or drop-in replacement of `UIPageControl`, simply subclass
+/// and override the `pageControl` accessor to initialize `_pageControl` to the
+/// desired value. The page control must support auto layout by implementing
+/// `intrinsicContentSize` and must respond to the following:
+///
+/// * `numberOfPages`
+/// * `currentPage`
+/// * `hidesForSinglePage`
 @property (nonatomic, strong, readonly) UIPageControl * pageControl;
 
 /// Defines the location of the page control relative to the page view

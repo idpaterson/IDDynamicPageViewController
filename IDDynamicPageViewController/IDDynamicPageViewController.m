@@ -70,7 +70,7 @@ pageControl            = _pageControl;
 
    UIView * controllerView = self.view;
    _controllerContainerView = [[UIView alloc] initWithFrame:controllerView.bounds];
-   _pageControl             = [[UIPageControl alloc] initWithFrame:controllerView.bounds];
+   _pageControl             = self.pageControl;
 
    _panGestureRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePanGesture:)];
 
@@ -242,7 +242,7 @@ pageControl            = _pageControl;
       [self animateWithDuration:duration
                         options:(UIViewAnimationOptionCurveEaseOut)
                      animations:^{
-                        [self updatePageControl];
+                        self.activeViewController = viewController;
                      }
                      completion:nil];
 
@@ -333,6 +333,7 @@ pageControl            = _pageControl;
    // Already active
    if ([_activeViewController isEqual:activeViewController])
    {
+      [self updatePageControl];
       return;
    }
 
@@ -746,13 +747,12 @@ pageControl            = _pageControl;
 {
    UIViewController * currentController = self.activeViewController;
    id                 object            = self.activeObject;
-   NSUInteger         index             = [_dataSource pageViewController:self indexOfObject:object];
+   NSUInteger         index             = self.indexOfActiveViewController;
 
    // The controller no longer exists, show the current one instead
    if (index == NSNotFound)
    {
-      __weak IDDynamicPageViewController           * weakSelf            = self;
-      UIViewController                             * controllerToPresent = nil;
+      UIViewController * controllerToPresent = nil;
       IDDynamicPageViewControllerNavigationDirection direction;
 
       // There was an object before the controller, check if it's still in the
@@ -786,6 +786,13 @@ pageControl            = _pageControl;
          controllerToPresent = [_dataSource pageViewController:self viewControllerForPageAtIndex:index];
          direction           = IDDynamicPageViewControllerNavigationDirectionReverse;
       }
+      else
+      {
+         // there are no controllers, but we'll set these anyway for clarity
+         index               = NSNotFound;
+         controllerToPresent = nil;
+         direction           = IDDynamicPageViewControllerNavigationDirectionReverse;
+      }
 
       // Fade the controller out so that it looks like it is disappearing.
       [UIView animateWithDuration:0.15
@@ -797,13 +804,8 @@ pageControl            = _pageControl;
                     direction:direction animated:YES
                    completion:^(BOOL completed)
        {
-          IDDynamicPageViewController * strongSelf = weakSelf;
-
-          if (strongSelf)
-          {
-             // Reset last controller to 100% opacity
-             currentController.view.alpha = 1.0f;
-          }
+          // Reset last controller to 100% opacity
+          currentController.view.alpha = 1.0f;
        }];
    }
    else
@@ -827,7 +829,7 @@ pageControl            = _pageControl;
 {
    if (!_pageControl)
    {
-      _pageControl = [UIPageControl new];
+      _pageControl = [[UIPageControl alloc] initWithFrame:self.view.bounds];
    }
 
    return _pageControl;
@@ -847,10 +849,25 @@ pageControl            = _pageControl;
    [self updatePageControlLayout];
 }
 
+- (void)setPageControlOverlaysContent:(BOOL)pageControlOverlaysContent
+{
+   if (_pageControlOverlaysContent == pageControlOverlaysContent)
+   {
+      return;
+   }
+
+   [self willChangeValueForKey:@"pageControlOverlaysContent"];
+   _pageControlOverlaysContent = pageControlOverlaysContent;
+   [self didChangeValueForKey:@"pageControlOverlaysContent"];
+
+   [self updatePageControlLayout];
+}
+
 - (void)updatePageControl
 {
    NSUInteger numberOfPages = [_dataSource numberOfPagesInPageViewController:self];
-   BOOL       needsLayout   = (numberOfPages == 0) != (_pageControl.numberOfPages == 0);
+   NSUInteger minimumPages  = (_pageControl.hidesForSinglePage) ? 1 : 0;
+   BOOL       needsLayout   = (numberOfPages <= minimumPages) != (_pageControl.numberOfPages <= minimumPages);
 
    _pageControl.numberOfPages = numberOfPages;
    _pageControl.currentPage   = self.indexOfActiveViewController;
@@ -867,44 +884,71 @@ pageControl            = _pageControl;
    NSLayoutConstraint * constraint;
    NSArray            * constraints;
    NSDictionary       * views;
-   UIView             * parentView = self.view;
-
-   // Remove any existing constraints
-   [_pageControl removeFromSuperview];
-   [parentView addSubview:_pageControl];
+   NSMutableArray     * pageControlConstraints = [NSMutableArray new];
+   UIView             * parentView             = self.view;
 
    views = NSDictionaryOfVariableBindings(_pageControl,
                                           _controllerContainerView);
 
-   constraints = [NSLayoutConstraint
-                  constraintsWithVisualFormat:@"H:|[_pageControl]|"
-                  options:0 metrics:nil views:views];
-   [parentView addConstraints:constraints];
-
-   if (_pageControlOverlaysContent)
+   // Install constraints that will not need to be removed later
+   if (!_pageControlLayoutConstraints)
    {
       constraints = [NSLayoutConstraint
-                     constraintsWithVisualFormat:@"V:[_controllerContainerView]|"
+                     constraintsWithVisualFormat:@"H:|[_pageControl]|"
+                     options:0 metrics:nil views:views];
+      [parentView addConstraints:constraints];
+      constraints = [NSLayoutConstraint
+                     constraintsWithVisualFormat:@"V:[_pageControl]|"
                      options:0 metrics:nil views:views];
       [parentView addConstraints:constraints];
    }
    else
    {
+      [parentView removeConstraints:_pageControlLayoutConstraints];
+   }
+
+   // This setting determines whether the controller container is pinned to the
+   // bottom of the superview
+   if (_pageControlOverlaysContent)
+   {
+      constraints = [NSLayoutConstraint
+                     constraintsWithVisualFormat:@"V:[_controllerContainerView]|"
+                     options:0 metrics:nil views:views];
+      [pageControlConstraints addObjectsFromArray:constraints];
+      [parentView addConstraints:constraints];
+   }
+   // or to the top of the page control
+   else
+   {
       constraints = [NSLayoutConstraint
                      constraintsWithVisualFormat:@"V:[_controllerContainerView][_pageControl]"
                      options:0 metrics:nil views:views];
+      [pageControlConstraints addObjectsFromArray:constraints];
       [parentView addConstraints:constraints];
    }
 
-   constraint = [NSLayoutConstraint
-                 constraintWithItem:_pageControl
-                 attribute:NSLayoutAttributeBottom
-                 relatedBy:NSLayoutRelationEqual
-                 toItem:parentView
-                 attribute:NSLayoutAttributeBottom
-                 multiplier:1.0f constant:0.0f];
-   _pageControlAppearanceConstraint = constraint;
-   [parentView addConstraint:constraint];
+   // If the page control is not supposed to be visible, give it a height of
+   // zero. It will also be marked hidden = YES
+   if (_pageControlPosition == IDDynamicPageViewControllerPageControlPositionNone)
+   {
+      _pageControl.hidden = YES;
+
+      constraint = [NSLayoutConstraint
+                    constraintWithItem:_pageControl
+                    attribute:NSLayoutAttributeHeight
+                    relatedBy:NSLayoutRelationEqual
+                    toItem:nil
+                    attribute:NSLayoutAttributeNotAnAttribute
+                    multiplier:1.0f constant:0.0f];
+      [pageControlConstraints addObject:constraint];
+      [parentView addConstraint:constraint];
+   }
+   else
+   {
+      _pageControl.hidden = NO;
+   }
+
+   _pageControlLayoutConstraints = pageControlConstraints;
 }
 
 #pragma mark - Layout

@@ -963,4 +963,63 @@
    });
 }
 
+- (void)testRemoveAllViewControllers
+{
+   IDDynamicPageViewController * pageViewController = [self newPageViewControllerInViewHierarchy];
+   IDMutablePageViewDataSource * dataSource         = [self newDataSourceWithThreeItems];
+
+   pageViewController.dataSource = dataSource;
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@0));
+
+   [dataSource removeObjectAtIndex:0];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@0));
+
+   [dataSource removeObjectAtIndex:0];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@0));
+
+   [dataSource removeObjectAtIndex:0];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@(NSNotFound)));
+   assertThat(pageViewController.activeViewController, nilValue());
+}
+
+- (void)testRemoveAllViewControllersThenAddMore
+{
+   IDDynamicPageViewController * pageViewController = [self newPageViewControllerInViewHierarchy];
+   IDMutablePageViewDataSource * dataSource         = [self newDataSourceWithThreeItems];
+   id object4 = @4;
+   id object5 = @5;
+
+   pageViewController.dataSource = dataSource;
+
+   // Show the last object
+   [pageViewController setObject:[dataSource objectAtIndex:2] animated:NO completion:nil];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@2));
+
+   [pageViewController beginUpdates];
+
+   [dataSource removeObjectAtIndex:0];
+   [dataSource removeObjectAtIndex:0];
+   [dataSource removeObjectAtIndex:0];
+
+   [pageViewController endUpdates];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@(NSNotFound)));
+   assertThat(pageViewController.activeViewController, nilValue());
+
+   [dataSource addObject:object4];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@0));
+   assertThat(pageViewController.activeViewController, isNot(nilValue()));
+
+   [dataSource addObject:object5];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@0));
+   assertThat(pageViewController.activeViewController, isNot(nilValue()));
+}
+
 @end
