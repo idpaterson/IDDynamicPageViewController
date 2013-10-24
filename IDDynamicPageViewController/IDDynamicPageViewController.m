@@ -314,20 +314,6 @@ pageControl            = _pageControl;
                   }];
 }
 
-- (void)setDefaultViewController
-{
-   if ([_dataSource respondsToSelector:@selector(numberOfPagesInPageViewController:)] &&
-       [_dataSource numberOfPagesInPageViewController:self] > 0)
-   {
-      UIViewController * firstController = [_dataSource pageViewController:self
-                                              viewControllerForPageAtIndex:0];
-
-      [self setViewController:firstController
-                    direction:IDDynamicPageViewControllerNavigationDirectionForward
-                     animated:NO completion:nil];
-   }
-}
-
 - (void)setActiveViewController:(UIViewController *)activeViewController
 {
    // Already active
@@ -428,25 +414,33 @@ pageControl            = _pageControl;
    _dataSource = dataSource;
    [self didChangeValueForKey:@"dataSource"];
 
-   // Remove all cached controllers and objects
-   @synchronized(_reusableControllerQueueByReuseIdentifier)
+   // If we are in an update procedure the expectation is that the current
+   // controller will be carried over despite a change of data source, if the
+   // new data source contains the same object.
+   if (_updateLevel == 0)
    {
-      [_reusableControllerQueueByReuseIdentifier removeAllObjects];
-   }
-   @synchronized(_activeControllerSetByReuseIdentifier)
-   {
-      [_activeControllerSetByReuseIdentifier removeAllObjects];
-   }
-   @synchronized(_objectReferenceByViewControllerReference)
-   {
-      [_objectReferenceByViewControllerReference removeAllObjects];
-   }
-   @synchronized(_viewControllerReferenceByObjectReference)
-   {
-      [_viewControllerReferenceByObjectReference removeAllObjects];
-   }
+      // Remove all cached controllers and objects
+      @synchronized(_reusableControllerQueueByReuseIdentifier)
+      {
+         [_reusableControllerQueueByReuseIdentifier removeAllObjects];
+      }
+      @synchronized(_activeControllerSetByReuseIdentifier)
+      {
+         [_activeControllerSetByReuseIdentifier removeAllObjects];
+      }
+      @synchronized(_objectReferenceByViewControllerReference)
+      {
+         [_objectReferenceByViewControllerReference removeAllObjects];
+      }
+      @synchronized(_viewControllerReferenceByObjectReference)
+      {
+         [_viewControllerReferenceByObjectReference removeAllObjects];
+      }
+      _nextObject     = nil;
+      _previousObject = nil;
 
-   [self setDefaultViewController];
+      [self reloadData];
+   }
 }
 
 - (void)showNeighboringControllerIfNecessaryInDirection:(IDDynamicPageViewControllerNavigationDirection)direction

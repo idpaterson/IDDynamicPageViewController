@@ -783,6 +783,72 @@
    assertThat(@([dataSource indexOfObject:object]), isNot(@(NSNotFound)));
 }
 
+- (void)testSetNewDataSource
+{
+   IDDynamicPageViewController * pageViewController = [self newPageViewControllerInViewHierarchy];
+   IDMutablePageViewDataSource * dataSource1        = [self newDataSourceWithThreeItems];
+   IDMutablePageViewDataSource * dataSource2        = [self newDataSourceWithThreeItems];
+   NSUInteger index  = 2;
+   id         object = [dataSource1 objectAtIndex:index];
+
+   pageViewController.dataSource = dataSource1;
+
+   [pageViewController setObject:object animated:NO completion:nil];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@(index)));
+
+   pageViewController.dataSource = dataSource2;
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@0));
+}
+
+- (void)testSetNewDataSourceMaintainingCurrentController
+{
+   IDDynamicPageViewController * pageViewController = [self newPageViewControllerInViewHierarchy];
+   IDMutablePageViewDataSource * dataSource1        = [self newDataSourceWithThreeItems];
+   IDMutablePageViewDataSource * dataSource2        = [self newDataSourceWithThreeItems];
+   NSUInteger index  = 2;
+   id         object = [dataSource1 objectAtIndex:index];
+
+   pageViewController.dataSource = dataSource1;
+
+   [pageViewController setObject:object animated:NO completion:nil];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@(index)));
+
+   [pageViewController beginUpdates];
+
+   pageViewController.dataSource = dataSource2;
+
+   [pageViewController endUpdates];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@(index)));
+}
+
+- (void)testSetNewDataSourceMaintainingCurrentControllerNeighbor
+{
+   IDDynamicPageViewController * pageViewController = [self newPageViewControllerInViewHierarchy];
+   IDMutablePageViewDataSource * dataSource1        = [self newDataSourceWithFiveItems];
+   IDMutablePageViewDataSource * dataSource2        = [self newDataSourceWithThreeItems];
+   NSUInteger index  = 3;
+   id         object = [dataSource1 objectAtIndex:index];
+
+   pageViewController.dataSource = dataSource1;
+
+   // Show an object that will no longer exist
+   [pageViewController setObject:object animated:NO completion:nil];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@(index)));
+
+   [pageViewController beginUpdates];
+
+   pageViewController.dataSource = dataSource2;
+
+   [pageViewController endUpdates];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@(index - 1)));
+}
+
 - (void)testShowControllerInDataSource
 {
    IDDynamicPageViewController * pageViewController = [self newPageViewControllerInViewHierarchy];
