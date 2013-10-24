@@ -123,22 +123,20 @@
 
 - (void)tearDown
 {
-   /*
-    UIWindow              * window     = [UIApplication sharedApplication].windows[0];
-    UIViewController * rootController = window.rootViewController;
-    NSArray * subviews = rootController.view.subviews.copy;
+   UIWindow         * window         = [UIApplication sharedApplication].windows[0];
+   UIViewController * rootController = window.rootViewController;
+   NSArray          * subviews       = rootController.view.subviews.copy;
 
-    for (UIView * subview in subviews)
-    {
-    id controller = subview.nextResponder;
-    if ([controller isKindOfClass:[IDDynamicPageViewController class]])
-    {
-    [controller willMoveToParentViewController:nil];
-    [subview removeFromSuperview];
-    [controller removeFromParentViewController];
-    }
-    }
-    */
+   for (UIView * subview in subviews)
+   {
+      id controller = subview.nextResponder;
+      if ([controller isKindOfClass:[IDDynamicPageViewController class]])
+      {
+         [controller willMoveToParentViewController:nil];
+         [subview removeFromSuperview];
+         [controller removeFromParentViewController];
+      }
+   }
 
    [super tearDown];
 }
