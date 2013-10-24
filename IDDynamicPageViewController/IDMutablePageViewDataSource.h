@@ -103,14 +103,50 @@ typedef NSString * (^ IDPageViewDataSourceReuseIdentifierBlock)(id object, IDDyn
 /// @return The number of objects in the data source.
 - (NSUInteger)numberOfObjects;
 
-#pragma mark - Data Manipulation
-/// @name      Data Manipulation
+#pragma mark - Adding Objects
+/// @name      Adding Objects
 
-- (void)addObject:(id)anObject;
-- (void)insertObject:(id)anObject atIndex:(NSUInteger)index;
-- (void)removeObject:(id)anObject;
+- (void)addObject:(id)object;
+- (void)addObjectsFromArray:(NSArray *)array;
+- (void)insertObject:(id)object atIndex:(NSUInteger)index;
+- (void)insertObjects:(NSArray *)objects atIndexes:(NSIndexSet *)indexes;
+
+#pragma mark - Removing Objects
+/// @name      Removing Objects
+
 - (void)removeLastObject;
 - (void)removeObjectAtIndex:(NSUInteger)index;
-- (void)replaceObjectAtIndex:(NSUInteger)index withObject:(id)anObject;
+- (void)removeObjectsAtIndexes:(NSIndexSet *)indexes;
+- (void)removeAllObjects;
+- (void)removeObject:(id)object inRange:(NSRange)range;
+- (void)removeObject:(id)object;
+- (void)removeObjectIdenticalTo:(id)object inRange:(NSRange)range;
+- (void)removeObjectIdenticalTo:(id)object;
+- (void)removeObjectsInArray:(NSArray *)array;
+- (void)removeObjectsInRange:(NSRange)range;
+
+#pragma mark - Replacing Objects
+/// @name      Replacing Objects
+
+- (void)replaceObjectAtIndex:(NSUInteger)index withObject:(id)object;
+- (void)replaceObjectsAtIndexes:(NSIndexSet *)indexes withObjects:(NSArray *)objects;
+- (void)replaceObjectsInRange:(NSRange)range withObjectsFromArray:(NSArray *)array range:(NSRange)otherRange;
+- (void)replaceObjectsInRange:(NSRange)range withObjectsFromArray:(NSArray *)array;
+
+#pragma mark - Filtering Content
+/// @name      Filtering Content
+
+- (void)filterUsingPredicate:(NSPredicate *)predicate;
+
+#pragma mark - Rearranging Content
+/// @name      Rearranging Content
+
+- (void)exchangeObjectAtIndex:(NSUInteger)index1 withObjectAtIndex:(NSUInteger)index2;
+- (void)sortUsingFunction:(NSInteger (*)(id, id, void *))compare context:(void *)context;
+- (void)sortUsingSelector:(SEL)comparator;
+#if NS_BLOCKS_AVAILABLE
+- (void)sortUsingComparator:(NSComparator)comparator;
+- (void)sortWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator;
+#endif
 
 @end

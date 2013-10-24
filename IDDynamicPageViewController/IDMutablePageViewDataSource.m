@@ -64,29 +64,58 @@
 
 #pragma mark - Data Manipulation
 
-- (void)addObject:(id)anObject
+#pragma mark Adding Objects
+
+- (void)addObject:(id)object
 {
    [_pageViewController beginUpdates];
 
    @synchronized(_objects)
    {
-      [_objects addObject:anObject];
+      [_objects addObject:object];
    }
 
    [_pageViewController endUpdates];
 }
 
-- (void)insertObject:(id)anObject atIndex:(NSUInteger)index
+- (void)addObjectsFromArray:(NSArray *)array
 {
    [_pageViewController beginUpdates];
 
    @synchronized(_objects)
    {
-      [_objects insertObject:anObject atIndex:index];
+      [_objects addObjectsFromArray:array];
    }
 
    [_pageViewController endUpdates];
 }
+
+- (void)insertObject:(id)object atIndex:(NSUInteger)index
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects insertObject:object atIndex:index];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+- (void)insertObjects:(NSArray *)objects atIndexes:(NSIndexSet *)indexes
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects insertObjects:objects atIndexes:indexes];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+
+#pragma mark Removing Objects
 
 - (void)removeLastObject
 {
@@ -95,18 +124,6 @@
    @synchronized(_objects)
    {
       [_objects removeLastObject];
-   }
-
-   [_pageViewController endUpdates];
-}
-
-- (void)removeObject:(id)object
-{
-   [_pageViewController beginUpdates];
-
-   @synchronized(_objects)
-   {
-      [_objects removeObject:object];
    }
 
    [_pageViewController endUpdates];
@@ -124,22 +141,232 @@
    [_pageViewController endUpdates];
 }
 
-- (void)replaceObjectAtIndex:(NSUInteger)index withObject:(id)anObject
+- (void)removeObjectsAtIndexes:(NSIndexSet *)indexes
 {
    [_pageViewController beginUpdates];
 
    @synchronized(_objects)
    {
-      [_objects replaceObjectAtIndex:index withObject:anObject];
+      [_objects removeObjectsAtIndexes:indexes];
    }
 
    [_pageViewController endUpdates];
 }
 
-- (void)didCompleteUpdate
+- (void)removeAllObjects
 {
-   [_pageViewController reloadData];
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects removeAllObjects];
+   }
+
+   [_pageViewController endUpdates];
 }
+
+- (void)removeObject:(id)object inRange:(NSRange)range
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects removeObject:object inRange:range];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+- (void)removeObject:(id)object
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects removeObject:object];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+- (void)removeObjectIdenticalTo:(id)object inRange:(NSRange)range
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects removeObjectIdenticalTo:object inRange:range];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+- (void)removeObjectIdenticalTo:(id)object
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects removeObjectIdenticalTo:object];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+- (void)removeObjectsInArray:(NSArray *)array
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects removeObjectsInArray:array];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+- (void)removeObjectsInRange:(NSRange)range
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects removeObjectsInRange:range];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+
+#pragma mark Replacing Objects
+
+- (void)replaceObjectAtIndex:(NSUInteger)index withObject:(id)object
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects replaceObjectAtIndex:index withObject:object];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+- (void)replaceObjectsAtIndexes:(NSIndexSet *)indexes withObjects:(NSArray *)objects
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects replaceObjectsAtIndexes:indexes withObjects:objects];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+- (void)replaceObjectsInRange:(NSRange)range withObjectsFromArray:(NSArray *)array range:(NSRange)otherRange
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects replaceObjectsInRange:range withObjectsFromArray:array range:otherRange];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+- (void)replaceObjectsInRange:(NSRange)range withObjectsFromArray:(NSArray *)array
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects replaceObjectsInRange:range withObjectsFromArray:array];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+
+#pragma mark Filtering Content
+
+- (void)filterUsingPredicate:(NSPredicate *)predicate
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects filterUsingPredicate:predicate];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+
+#pragma mark Rearranging Content
+
+- (void)exchangeObjectAtIndex:(NSUInteger)index1 withObjectAtIndex:(NSUInteger)index2
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects exchangeObjectAtIndex:index1 withObjectAtIndex:index2];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+- (void)sortUsingFunction:(NSInteger (*)(id, id, void *))compare context:(void *)context
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects sortUsingFunction:compare context:context];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+- (void)sortUsingSelector:(SEL)comparator
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects sortUsingSelector:comparator];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+#if NS_BLOCKS_AVAILABLE
+- (void)sortUsingComparator:(NSComparator)comparator
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects sortUsingComparator:comparator];
+   }
+
+   [_pageViewController endUpdates];
+}
+
+- (void)sortWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator
+{
+   [_pageViewController beginUpdates];
+
+   @synchronized(_objects)
+   {
+      [_objects sortWithOptions:options usingComparator:comparator];
+   }
+
+   [_pageViewController endUpdates];
+}
+#endif
 
 #pragma mark - View Controller Management
 
