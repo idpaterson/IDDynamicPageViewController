@@ -341,6 +341,13 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 /// data source.
 - (void)reloadData;
 
+#pragma mark - Delegation
+/// @name      Delegation
+
+- (void)didFinishAnimating:(BOOL)finished previousViewController:(UIViewController *)previousViewController transitionCompleted:(BOOL)completed;
+
+- (void)willTransitionToViewController:(UIViewController *)pendingViewController;
+
 @end
 
 @protocol IDDynamicPageViewControllerDelegate <NSObject>
