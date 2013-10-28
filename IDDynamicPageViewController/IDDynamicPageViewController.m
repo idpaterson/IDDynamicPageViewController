@@ -241,6 +241,12 @@ pageControl            = _pageControl;
       animated = NO;
    }
 
+   // Make sure the controller's view hierarchy has loaded
+   if (!self.isViewLoaded)
+   {
+      self.view.tag = 0;
+   }
+
    UIViewController * activeViewController = _activeViewController;
    NSTimeInterval     duration             = animated ? _animationDuration : 0.0;
    NSUInteger         transitionNumber     = _transitionNumber++;
