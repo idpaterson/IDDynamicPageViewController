@@ -39,6 +39,8 @@ typedef void (^ IDPageViewDataSourceConfigureViewControllerBlock)(UIViewControll
 /// page view controller.
 typedef NSString * (^ IDPageViewDataSourceReuseIdentifierBlock)(id object, IDDynamicPageViewController * pageViewController, NSUInteger index);
 
+typedef void (^ IDPageViewDataSourceObjectEnumerationBlock)(id object, NSUInteger * index, BOOL * stop);
+
 @interface IDMutablePageViewDataSource : NSObject
 <IDDynamicPageViewControllerDataSource>
 {
@@ -102,6 +104,8 @@ typedef NSString * (^ IDPageViewDataSourceReuseIdentifierBlock)(id object, IDDyn
 ///
 /// @return The number of objects in the data source.
 - (NSUInteger)numberOfObjects;
+
+- (void)enumerateObjectsUsingBlock:(void (^)(id object, NSUInteger index, BOOL * stop))block;
 
 #pragma mark - Adding Objects
 /// @name      Adding Objects

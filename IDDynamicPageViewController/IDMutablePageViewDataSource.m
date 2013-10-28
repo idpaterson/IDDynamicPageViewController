@@ -62,6 +62,19 @@
    }
 }
 
+- (void)enumerateObjectsUsingBlock:(void (^)(id obj, NSUInteger idx, BOOL *stop))block
+{
+   if (!block)
+   {
+      return;
+   }
+
+   @synchronized(_objects)
+   {
+      [_objects enumerateObjectsUsingBlock:block];
+   }
+}
+
 #pragma mark - Data Manipulation
 
 #pragma mark Adding Objects
