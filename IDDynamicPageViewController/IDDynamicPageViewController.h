@@ -89,6 +89,7 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
    __weak id  _nextObject;
    NSUInteger _indexOfActiveViewControllerAfterChanges;
    NSUInteger _updateLevel;
+   NSUInteger _transitionNumber;
    BOOL       _dataWasChangedWithoutBeginUpdates;
 
 #pragma mark Interaction support

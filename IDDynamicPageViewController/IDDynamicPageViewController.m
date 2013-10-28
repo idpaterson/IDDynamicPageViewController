@@ -108,6 +108,8 @@ pageControl            = _pageControl;
 
 - (void)beginAppearanceTransition:(BOOL)isAppearing forViewController:(UIViewController *)viewController animated:(BOOL)animated
 {
+   UIView * controllerView = viewController.view;
+
    if (viewController && ![viewController.parentViewController isEqual:self])
    {
       // We are trying to hide a controller that is not managed by this
@@ -120,10 +122,7 @@ pageControl            = _pageControl;
       // Adding the controller begins the appearance transition
       [self addChildViewController:viewController];
       [viewController didMoveToParentViewController:self];
-
-      UIView * controllerView = viewController.view;
       [viewController beginAppearanceTransition:isAppearing animated:animated];
-      [_controllerContainerView addSubview:controllerView];
    }
    else
    {
@@ -133,6 +132,11 @@ pageControl            = _pageControl;
       }
 
       [viewController beginAppearanceTransition:isAppearing animated:animated];
+   }
+
+   if (![controllerView isDescendantOfView:_controllerContainerView])
+   {
+      [_controllerContainerView addSubview:controllerView];
    }
 }
 
@@ -151,7 +155,10 @@ pageControl            = _pageControl;
       }
    }
 
-   viewController.view.frame = _controllerContainerView.bounds;
+   UIView * controllerView = viewController.view;
+   controllerView.layer.transform = CATransform3DIdentity;
+   controllerView.frame           = _controllerContainerView.bounds;
+   controllerView.translatesAutoresizingMaskIntoConstraints = NO;
 
    [self beginAppearanceTransition:YES forViewController:viewController animated:animated];
    [self applyConstraintsForChildViewController:viewController];
@@ -236,6 +243,7 @@ pageControl            = _pageControl;
 
    UIViewController * activeViewController = _activeViewController;
    NSTimeInterval     duration             = animated ? _animationDuration : 0.0;
+   NSUInteger         transitionNumber     = _transitionNumber++;
 
    if (!viewController || [activeViewController isEqual:viewController])
    {
@@ -292,7 +300,14 @@ pageControl            = _pageControl;
                      self.activeViewController = viewController;
                   }
                   completion:^(BOOL completed) {
-                     // If interrupted, these have already been called.
+                     // The animation sometimes reports questionable values
+                     // here, so we determine completion by whether or not the
+                     // animation has been interrupted by showing a different
+                     // controller.
+                     completed = transitionNumber < _transitionNumber;
+
+                     // If another transition was started before this one
+                     // finished these calls will have already been made
                      if (completed)
                      {
                         [self removeViewController:activeViewController animated:animated];
@@ -951,9 +966,9 @@ pageControl            = _pageControl;
 {
    if (_otherViewController)
    {
-      CATransform3D activeControllerTransform = [self finalTransformForDisotherViewController:_activeViewController
-                                                                                    direction:direction
-                                                                               interpolatedTo:interpolationRatio];
+      CATransform3D activeControllerTransform = [self finalTransformForDisappearingViewController:_activeViewController
+                                                                                        direction:direction
+                                                                                   interpolatedTo:interpolationRatio];
       CATransform3D appearingControllerTransform = [self initialTransformForAppearingViewController:_otherViewController
                                                                                           direction:direction
                                                                                      interpolatedTo:interpolationRatio];
@@ -1012,7 +1027,7 @@ pageControl            = _pageControl;
                                        0.0f);
 }
 
-- (CATransform3D)finalTransformForDisotherViewController:(UIViewController *)controller direction:(IDDynamicPageViewControllerNavigationDirection)direction interpolatedTo:(CGFloat)interpolationRatio
+- (CATransform3D)finalTransformForDisappearingViewController:(UIViewController *)controller direction:(IDDynamicPageViewControllerNavigationDirection)direction interpolatedTo:(CGFloat)interpolationRatio
 {
    CGRect bounds = _controllerContainerView.bounds;
    CGSize offset = bounds.size;
@@ -1232,8 +1247,6 @@ pageControl            = _pageControl;
                                              animated:YES];
                            [self didShowViewController:otherViewController
                                               animated:YES];
-
-                           activeViewController.view.layer.transform = CATransform3DIdentity;
                         }
                         // Transition cancelled
                         else
@@ -1242,6 +1255,7 @@ pageControl            = _pageControl;
                                              animated:YES];
                         }
 
+                        activeViewController.view.layer.transform = CATransform3DIdentity;
                         otherViewController.view.layer.transform = CATransform3DIdentity;
 
                         _otherViewController = nil;
