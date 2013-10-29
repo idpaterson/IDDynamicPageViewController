@@ -29,6 +29,7 @@ pageControl            = _pageControl;
    _indexByControllerReference               = [NSMutableDictionary new];
    _viewControllerReferenceByObjectReference = [NSMutableDictionary new];
    _objectReferenceByViewControllerReference = [NSMutableDictionary new];
+   _activeAndNeighboringControllers = [NSMutableSet new];
 
    _animationDuration = 0.3;
    _interPageSpacing  = 0.0f;
@@ -336,10 +337,8 @@ pageControl            = _pageControl;
                      // Prepare both directions, since the current and previous
                      // views controllers may not necessarily be adjacent in
                      // the case of programmatic controller switching.
-                     dispatch_async(dispatch_get_main_queue(), ^{
-                        [self prepareNeighboringControllerIfNecessaryInDirection:IDDynamicPageViewControllerNavigationDirectionForward];
-                        [self prepareNeighboringControllerIfNecessaryInDirection:IDDynamicPageViewControllerNavigationDirectionReverse];
-                     });
+                     [self prepareNeighboringControllerIfNecessaryInDirection:IDDynamicPageViewControllerNavigationDirectionForward];
+                     [self prepareNeighboringControllerIfNecessaryInDirection:IDDynamicPageViewControllerNavigationDirectionReverse];
                   }];
 }
 
@@ -453,9 +452,9 @@ pageControl            = _pageControl;
       {
          [_reusableControllerQueueByReuseIdentifier removeAllObjects];
       }
-      @synchronized(_activeControllerSetByReuseIdentifier)
+      @synchronized(_activeAndNeighboringControllers)
       {
-         [_activeControllerSetByReuseIdentifier removeAllObjects];
+         [_activeAndNeighboringControllers removeAllObjects];
       }
       @synchronized(_objectReferenceByViewControllerReference)
       {
@@ -579,7 +578,7 @@ pageControl            = _pageControl;
 
    // If a suitable view controller is found we still need to make sure it is
    // the correct reuse identifier.
-   if (viewController)
+   if (NO && viewController)
    {
       @synchronized(_reusableControllerQueueByReuseIdentifier)
       {
@@ -597,7 +596,7 @@ pageControl            = _pageControl;
       }
    }
 
-   return nil;
+   return viewController;
 }
 
 - (UIViewController *)inactiveViewControllerForReuseIdentifier:(NSString *)reuseIdentifier byAssociatingWithObject:(id)object
@@ -610,14 +609,11 @@ pageControl            = _pageControl;
 
       // Don't reuse the only controller in the queue. We want 2 at all times
       // since there is one controller before and one after the current one
-      if (reuseQueue.count > 1)
-      {
-         viewController = reuseQueue.firstObject;
+      viewController = reuseQueue.firstObject;
 
-         if (viewController)
-         {
-            [reuseQueue removeObjectAtIndex:0];
-         }
+      if (viewController)
+      {
+         [reuseQueue removeObjectAtIndex:0];
       }
    }
 
@@ -683,6 +679,24 @@ pageControl            = _pageControl;
       IDWeakObjectRepresentation * weakReference = [IDWeakObjectRepresentation weakRepresentationOfObject:viewController];
 
       _reuseIdentifierByControllerReference[weakReference] = reuseIdentifier;
+   }
+
+   // Unless this controller is already presented, immediately mark it for reuse
+   // otherwise we may create multiple copies of the same controller.
+   if (![_activeAndNeighboringControllers containsObject:viewController])
+   {
+      @synchronized(_reusableControllerQueueByReuseIdentifier)
+      {
+         NSMutableOrderedSet * reuseQueue = _reusableControllerQueueByReuseIdentifier[reuseIdentifier];
+
+         if (!reuseQueue)
+         {
+            reuseQueue = [NSMutableOrderedSet new];
+            _reusableControllerQueueByReuseIdentifier[reuseIdentifier] = reuseQueue;
+         }
+
+         [reuseQueue addObject:viewController];
+      }
    }
 
    IDLogInfo(@"Created a new controller %@ to represent %@", viewController, object);

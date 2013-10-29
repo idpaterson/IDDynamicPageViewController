@@ -77,11 +77,11 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 
    NSMutableDictionary * _controllerClassByReuseIdentifier;
    NSMutableDictionary * _reusableControllerQueueByReuseIdentifier;
-   NSMutableDictionary * _activeControllerSetByReuseIdentifier;
    NSMutableDictionary * _reuseIdentifierByControllerReference;
    NSMutableDictionary * _indexByControllerReference;
    NSMutableDictionary * _viewControllerReferenceByObjectReference;
    NSMutableDictionary * _objectReferenceByViewControllerReference;
+   NSMutableSet * _activeAndNeighboringControllers;
 
 #pragma mark Controller removal handling
 
