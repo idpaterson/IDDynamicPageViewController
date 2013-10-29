@@ -249,7 +249,7 @@ pageControl            = _pageControl;
 
    UIViewController * activeViewController = _activeViewController;
    NSTimeInterval     duration             = animated ? _animationDuration : 0.0;
-   NSUInteger         transitionNumber     = _transitionNumber++;
+   NSUInteger         transitionNumber     = ++_transitionNumber;
 
    if (!viewController || [activeViewController isEqual:viewController])
    {
@@ -310,7 +310,7 @@ pageControl            = _pageControl;
                      // here, so we determine completion by whether or not the
                      // animation has been interrupted by showing a different
                      // controller.
-                     completed = transitionNumber < _transitionNumber;
+                     completed = transitionNumber == _transitionNumber;
 
                      // If another transition was started before this one
                      // finished these calls will have already been made
