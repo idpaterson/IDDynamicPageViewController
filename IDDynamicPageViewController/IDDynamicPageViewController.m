@@ -332,6 +332,14 @@ pageControl            = _pageControl;
                      {
                         completion(completed);
                      }
+
+                     // Prepare both directions, since the current and previous
+                     // views controllers may not necessarily be adjacent in
+                     // the case of programmatic controller switching.
+                     dispatch_async(dispatch_get_main_queue(), ^{
+                        [self prepareNeighboringControllerIfNecessaryInDirection:IDDynamicPageViewControllerNavigationDirectionForward];
+                        [self prepareNeighboringControllerIfNecessaryInDirection:IDDynamicPageViewControllerNavigationDirectionReverse];
+                     });
                   }];
 }
 
@@ -524,6 +532,37 @@ pageControl            = _pageControl;
 
    _appearingControllerDirection = direction;
    _otherViewController          = viewController;
+}
+
+- (void)prepareNeighboringControllerIfNecessaryInDirection:(IDDynamicPageViewControllerNavigationDirection)direction
+{
+   UIViewController * viewController              = nil;
+   NSUInteger         indexOfActiveViewController = self.indexOfActiveViewController;
+
+   switch (direction)
+   {
+      case IDDynamicPageViewControllerNavigationDirectionForward:
+         if (indexOfActiveViewController + 1 < [_dataSource numberOfPagesInPageViewController:self])
+         {
+            viewController = [_dataSource pageViewController:self viewControllerForPageAtIndex:indexOfActiveViewController + 1];
+         }
+         break;
+
+      case IDDynamicPageViewControllerNavigationDirectionReverse:
+         if (indexOfActiveViewController > 0)
+         {
+            viewController = [_dataSource pageViewController:self viewControllerForPageAtIndex:indexOfActiveViewController - 1];
+         }
+         break;
+
+      case IDDynamicPageViewControllerNavigationDirectionNone:
+         // Should not happen, this is only used to denote that no neighboring
+         // controllers are loaded.
+         break;
+   }
+
+   // Ensure that the view is loaded
+   viewController.view.alpha = 1.0f;
 }
 
 #pragma mark - View Controller Reuse
@@ -1272,6 +1311,10 @@ pageControl            = _pageControl;
                         [self didFinishAnimating:YES
                           previousViewController:activeViewController
                              transitionCompleted:completed];
+
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                           [self prepareNeighboringControllerIfNecessaryInDirection:direction];
+                        });
                      }];
    }
    else if (state == UIGestureRecognizerStateChanged)
