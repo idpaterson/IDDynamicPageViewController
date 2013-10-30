@@ -74,6 +74,7 @@ pageControl            = _pageControl;
 
    _panGestureRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePanGesture:)];
 
+   _panGestureRecognizer.delegate           = self;
    _panGestureRecognizer.delaysTouchesBegan = YES;
 
    [controllerView addGestureRecognizer:_panGestureRecognizer];
@@ -1255,8 +1256,6 @@ pageControl            = _pageControl;
             direction              = IDDynamicPageViewControllerNavigationDirectionReverse;
             velocityOnCriticalAxis = velocity.x;
          }
-
-         interpolationRatio = ABS(translation.x / bounds.size.width);
          break;
 
       case IDDynamicPageViewControllerNavigationOrientationVertical:
@@ -1270,7 +1269,31 @@ pageControl            = _pageControl;
             direction              = IDDynamicPageViewControllerNavigationDirectionReverse;
             velocityOnCriticalAxis = velocity.y;
          }
+         break;
+   }
 
+   if (_simultaneousPanGestureRecognizer)
+   {
+      if (![self shouldApplyTranslationWithSimultaneousGesturesInDirection:direction])
+      {
+         [self applyTransformsInterpolatedTo:0.0f inDirection:IDDynamicPageViewControllerNavigationDirectionForward];
+
+         _translationInInnerScrollView = [_simultaneousPanGestureRecognizer translationInView:_simultaneousPanGestureRecognizer.view];
+         return;
+      }
+
+      translation.x -= _translationInInnerScrollView.x;
+      translation.y -= _translationInInnerScrollView.y;
+   }
+
+   // Calculate the completion ratio of the gesture
+   switch (_navigationOrientation)
+   {
+      case IDDynamicPageViewControllerNavigationOrientationHorizontal:
+         interpolationRatio = ABS(translation.x / bounds.size.width);
+         break;
+
+      case IDDynamicPageViewControllerNavigationOrientationVertical:
          interpolationRatio = ABS(translation.y / bounds.size.height);
          break;
    }
@@ -1303,7 +1326,10 @@ pageControl            = _pageControl;
          [self willRemoveViewController:otherViewController animated:YES];
       }
 
-      _panGestureRecognizer.enabled = NO;
+      _simultaneousPanGestureRecognizer.enabled = YES;
+      _simultaneousPanGestureRecognizer         = nil;
+      _translationInInnerScrollView             = CGPointZero;
+      _panGestureRecognizer.enabled             = NO;
 
       [self animateWithDuration:_animationDuration
                         options:(UIViewAnimationOptionCurveEaseOut)
@@ -1357,6 +1383,93 @@ pageControl            = _pageControl;
       
       [self applyTransformsInterpolatedTo:interpolationRatio inDirection:direction];
    }
+}
+
+- (BOOL)shouldApplyTranslationWithSimultaneousGesturesInDirection:(IDDynamicPageViewControllerNavigationDirection)direction
+{
+   if (_simultaneousPanGestureRecognizer)
+   {
+      UIScrollView * scrollView  = (id)_simultaneousPanGestureRecognizer.view;
+      CGRect         visibleRect = [self visibleRectInScrollView:scrollView];
+      CGSize         contentSize = scrollView.contentSize;
+
+      switch (_navigationOrientation)
+      {
+         case IDDynamicPageViewControllerNavigationOrientationHorizontal:
+            if (direction == IDDynamicPageViewControllerNavigationDirectionForward)
+            {
+               return CGRectGetMaxX(visibleRect) >= contentSize.width;
+            }
+            else
+            {
+               return CGRectGetMinX(visibleRect) <= 0.0f;
+            }
+
+         case IDDynamicPageViewControllerNavigationOrientationVertical:
+            if (direction == IDDynamicPageViewControllerNavigationDirectionForward)
+            {
+               return CGRectGetMaxY(visibleRect) >= contentSize.height;
+            }
+            else
+            {
+               return CGRectGetMinY(visibleRect) <= 0.0f;
+            }
+      }
+   }
+
+   return YES;
+}
+
+- (BOOL)shouldBeginPanGestureWithGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer
+{
+   CGPoint velocity = [panGestureRecognizer velocityInView:_controllerContainerView];
+
+   switch (_navigationOrientation)
+   {
+      case IDDynamicPageViewControllerNavigationOrientationHorizontal:
+         return ABS(velocity.x) > ABS(velocity.y);
+
+      case IDDynamicPageViewControllerNavigationOrientationVertical:
+         return ABS(velocity.y) > ABS(velocity.x);
+   }
+}
+
+- (CGRect)visibleRectInScrollView:(UIScrollView *)scrollView
+{
+   if (!scrollView)
+   {
+      return CGRectZero;
+   }
+
+   CGRect   visibleRect = CGRectZero;
+   CGFloat  zoomScale   = scrollView.zoomScale;
+   UIView * zoomView    = nil;
+
+   visibleRect.origin = scrollView.contentOffset;
+
+   if (zoomScale != 1.0f && [scrollView.delegate respondsToSelector:@selector(viewForZoomingInScrollView:)])
+   {
+      zoomView = [scrollView.delegate viewForZoomingInScrollView:scrollView];
+
+      if (zoomView)
+      {
+         visibleRect.origin.x -= zoomView.frame.origin.x;
+         visibleRect.origin.y -= zoomView.frame.origin.y;
+         visibleRect.size      = scrollView.contentSize;
+      }
+   }
+
+   if (!zoomView)
+   {
+      visibleRect.size = scrollView.bounds.size;
+
+      visibleRect.origin.x    /= zoomScale;
+      visibleRect.origin.y    /= zoomScale;
+      visibleRect.size.width  /= zoomScale;
+      visibleRect.size.height /= zoomScale;
+   }
+
+   return visibleRect;
 }
 
 #pragma mark - Memory management
@@ -1414,6 +1527,52 @@ pageControl            = _pageControl;
    }
    
    return [UIApplication sharedApplication].statusBarOrientation;
+}
+
+#pragma mark - UIGestureRecognizerDelegate implementation
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
+{
+   if ([gestureRecognizer isKindOfClass:[UIPanGestureRecognizer class]])
+   {
+      return [self shouldBeginPanGestureWithGestureRecognizer:(id)gestureRecognizer];
+   }
+   
+   return YES;
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer
+{
+   if ([otherGestureRecognizer isKindOfClass:[UIPanGestureRecognizer class]] &&
+       [otherGestureRecognizer.view isKindOfClass:[UIScrollView class]])
+   {
+      UIScrollView * scrollView = (id)otherGestureRecognizer.view;
+      
+      // If the scroll view does not scroll along the axis of interest, do not
+      // run the recognizers simultaneously.
+      switch (_navigationOrientation)
+      {
+         case IDDynamicPageViewControllerNavigationOrientationHorizontal:
+            if (scrollView.contentSize.width <= scrollView.bounds.size.width)
+            {
+               return NO;
+            }
+            break;
+            
+         case IDDynamicPageViewControllerNavigationOrientationVertical:
+            if (scrollView.contentSize.height <= scrollView.bounds.size.height)
+            {
+               return NO;
+            }
+            break;
+      }
+      
+      _simultaneousPanGestureRecognizer = (id)otherGestureRecognizer;
+      _translationInInnerScrollView     = CGPointZero;
+      
+      return YES;
+   }
+   return NO;
 }
 
 @end

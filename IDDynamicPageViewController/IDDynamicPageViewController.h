@@ -68,6 +68,7 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 @protocol IDDynamicPageViewControllerDataSource;
 
 @interface IDDynamicPageViewController : IDDPVC_SUPERCLASS
+<UIGestureRecognizerDelegate>
 {
    UIPageControl * _pageControl;
 
@@ -96,6 +97,8 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 
    UIView                 * _controllerContainerView;
    UIPanGestureRecognizer * _panGestureRecognizer;
+   UIPanGestureRecognizer * _simultaneousPanGestureRecognizer;
+   CGPoint _translationInInnerScrollView;
    IDDynamicPageViewControllerNavigationDirection _appearingControllerDirection;
 
 #pragma mark Layout
