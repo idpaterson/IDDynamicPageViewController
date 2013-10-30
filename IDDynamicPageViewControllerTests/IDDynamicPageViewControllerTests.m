@@ -773,10 +773,10 @@
    id controller4 = [pageViewController dequeueReusableViewControllerWithReuseIdentifier:reuseIdentifier forObject:object4 atIndex:3];
    [pageViewController setViewController:controller4 direction:IDDynamicPageViewControllerNavigationDirectionForward animated:NO completion:nil];
 
-   // Unless that controller is already displayed like controller3
-   assertThat(controller1, isNot(equalTo(controller4)));
-   assertThat(controller2, equalTo(controller4));
-   assertThat(controller3, isNot(equalTo(controller4)));
+   // This is going to be the same object and controller as controller3
+   assertThat(controller1, equalTo(controller4));
+   assertThat(controller2, isNot(equalTo(controller4)));
+   assertThat(controller3, equalTo(controller4));
 }
 
 #pragma mark - Data Source Management
@@ -1112,10 +1112,12 @@
    id object2 = [dataSource objectAtIndex:1];
    id object3 = [dataSource objectAtIndex:2];
    id object4 = [dataSource objectAtIndex:3];
+   id object5 = [dataSource objectAtIndex:4];
    UIViewController * viewController1;
    UIViewController * viewController2;
    UIViewController * viewController3;
    UIViewController * viewController4;
+   UIViewController * viewController5;
 
    pageViewController.dataSource = dataSource;
 
@@ -1127,17 +1129,78 @@
 
    assertThat(viewController2, isNot(equalTo(viewController1)));
 
+   // A controller was created for object3 when object2 was set, and since
+   // object1 was adjacent at that time it will not reuse the object1 controller
    [pageViewController setObject:object3 animated:NO completion:nil];
    viewController3 = pageViewController.activeViewController;
 
-   assertThat(viewController3, equalTo(viewController1));
+   assertThat(viewController3, isNot(equalTo(viewController1)));
    assertThat(viewController3, isNot(equalTo(viewController2)));
 
    [pageViewController setObject:object4 animated:NO completion:nil];
    viewController4 = pageViewController.activeViewController;
 
-   assertThat(viewController4, equalTo(viewController2));
-   assertThat(viewController4, isNot(equalTo(viewController1)));
+   assertThat(viewController4, equalTo(viewController1));
+   assertThat(viewController4, isNot(equalTo(viewController2)));
+   assertThat(viewController4, isNot(equalTo(viewController3)));
+
+   [pageViewController setObject:object5 animated:NO completion:nil];
+   viewController5 = pageViewController.activeViewController;
+
+   assertThat(viewController5, isNot(equalTo(viewController1)));
+   assertThat(viewController5, equalTo(viewController2));
+   assertThat(viewController5, isNot(equalTo(viewController3)));
+   assertThat(viewController5, isNot(equalTo(viewController4)));
+}
+
+- (void)testControllerReuseWithDataSourceNonAdjacentNavigation
+{
+   IDDynamicPageViewController * pageViewController = [self newPageViewControllerInViewHierarchy];
+   IDMutablePageViewDataSource * dataSource         = [self newDataSourceWithFiveItems];
+   id object1 = [dataSource objectAtIndex:0];
+   id object2 = [dataSource objectAtIndex:1];
+   id object3 = [dataSource objectAtIndex:2];
+   id object4 = [dataSource objectAtIndex:3];
+   id object5 = [dataSource objectAtIndex:4];
+   UIViewController * viewController1;
+   UIViewController * viewController2;
+   UIViewController * viewController3;
+   UIViewController * viewController4;
+   UIViewController * viewController5;
+
+   pageViewController.dataSource = dataSource;
+
+   [pageViewController setObject:object1 animated:NO completion:nil];
+   viewController1 = pageViewController.activeViewController;
+
+   [pageViewController setObject:object2 animated:NO completion:nil];
+   viewController2 = pageViewController.activeViewController;
+
+   assertThat(viewController2, isNot(equalTo(viewController1)));
+
+   // A view controller will have been created for the third object even though
+   // we did not explicitly show it
+   viewController3 = [pageViewController dequeueReusableViewControllerWithReuseIdentifier:[self reuseIdentifier1]
+                                                                                forObject:object3
+                                                                                  atIndex:2];
+
+   assertThat(viewController3, isNot(equalTo(viewController1)));
+   assertThat(viewController3, isNot(equalTo(viewController2)));
+
+   // The 4th object will then reuse the first controller
+   [pageViewController setObject:object4 animated:NO completion:nil];
+   viewController4 = pageViewController.activeViewController;
+
+   assertThat(viewController4, equalTo(viewController1));
+   assertThat(viewController4, isNot(equalTo(viewController2)));
+   assertThat(viewController4, isNot(equalTo(viewController3)));
+
+   [pageViewController setObject:object5 animated:NO completion:nil];
+   viewController5 = pageViewController.activeViewController;
+
+   assertThat(viewController5, isNot(equalTo(viewController1)));
+   assertThat(viewController5, equalTo(viewController2));
+   assertThat(viewController5, isNot(equalTo(viewController3)));
 }
 
 - (void)testControllerReuseWithDataSourceUsingDistinctReuseIdentifiers
@@ -1234,20 +1297,22 @@
 
    assertThat(viewController2, isNot(equalTo(viewController1)));
 
-   // An even has been shown, so an odd can be reused
+   // Will not reuse viewController1 because a controller for object3 was
+   // first created when object2 was shown, at which time object1 was adjacent
    [pageViewController setObject:object3 animated:NO completion:nil];
    viewController3 = pageViewController.activeViewController;
 
-   assertThat(viewController3, equalTo(viewController1));
+   assertThat(viewController3, isNot(equalTo(viewController1)));
 
-   // Show a controller with the same reuse identifier, have to make a new
-   // controller
+   // Show a controller with the same reuse identifier, now we can reuse
+   // viewController1
    [pageViewController setObject:object5 animated:NO completion:nil];
    viewController5 = pageViewController.activeViewController;
 
+   assertThat(viewController5, equalTo(viewController1));
    assertThat(viewController5, isNot(equalTo(viewController3)));
 
-   // Doing the same thing again should reuse the existing controller
+   // Doing the same thing again should also reuse an existing controller
    [pageViewController setObject:object1 animated:NO completion:nil];
    viewController1Reused = pageViewController.activeViewController;
 
@@ -1261,16 +1326,16 @@
    IDMutablePageViewDataSource * dataSource         = [self newDataSourceWithFiveItems];
    id object1 = [dataSource objectAtIndex:0];
    id object2 = [dataSource objectAtIndex:1];
-   id object3 = [dataSource objectAtIndex:2];
+   id object4 = [dataSource objectAtIndex:3];
    UIViewController * viewController1;
    UIViewController * viewController2;
-   UIViewController * viewController3;
+   UIViewController * viewController4;
    UIViewController * viewController1FromDataSourceBefore;
    UIViewController * viewController2FromDataSourceBefore;
-   UIViewController * viewController3FromDataSourceBefore;
+   UIViewController * viewController4FromDataSourceBefore;
    UIViewController * viewController1FromDataSourceAfter;
    UIViewController * viewController2FromDataSourceAfter;
-   UIViewController * viewController3FromDataSourceAfter;
+   UIViewController * viewController4FromDataSourceAfter;
 
    pageViewController.dataSource = dataSource;
 
@@ -1297,17 +1362,18 @@
    assertThat(viewController2, equalTo(viewController2FromDataSourceAfter));
    assertThat(viewController2FromDataSourceBefore, equalTo(viewController2FromDataSourceAfter));
 
-   viewController3FromDataSourceBefore = [dataSource pageViewController:pageViewController
-                                           viewControllerForPageAtIndex:2];
-   [pageViewController setObject:object3 animated:NO completion:nil];
-   viewController3 = pageViewController.activeViewController;
-   viewController3FromDataSourceAfter = [dataSource pageViewController:pageViewController
-                                          viewControllerForPageAtIndex:2];
+   viewController4FromDataSourceBefore = [dataSource pageViewController:pageViewController
+                                           viewControllerForPageAtIndex:3];
+   [pageViewController setObject:object4 animated:NO completion:nil];
+   viewController4 = pageViewController.activeViewController;
+   viewController4FromDataSourceAfter = [dataSource pageViewController:pageViewController
+                                          viewControllerForPageAtIndex:3];
 
-   assertThat(viewController3, equalTo(viewController1));
-   assertThat(viewController3, equalTo(viewController3FromDataSourceBefore));
-   assertThat(viewController3, equalTo(viewController3FromDataSourceAfter));
-   assertThat(viewController3FromDataSourceBefore, equalTo(viewController3FromDataSourceAfter));
+   assertThat(viewController4, equalTo(viewController1));
+   assertThat(viewController4, isNot(equalTo(viewController2)));
+   assertThat(viewController4, equalTo(viewController4FromDataSourceBefore));
+   assertThat(viewController4, equalTo(viewController4FromDataSourceAfter));
+   assertThat(viewController4FromDataSourceBefore, equalTo(viewController4FromDataSourceAfter));
 }
 
 @end

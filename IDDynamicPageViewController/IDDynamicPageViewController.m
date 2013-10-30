@@ -29,7 +29,6 @@ pageControl            = _pageControl;
    _indexByControllerReference               = [NSMutableDictionary new];
    _viewControllerReferenceByObjectReference = [NSMutableDictionary new];
    _objectReferenceByViewControllerReference = [NSMutableDictionary new];
-   _activeAndNeighboringControllers = [NSMutableSet new];
 
    _animationDuration = 0.3;
    _interPageSpacing  = 0.0f;
@@ -391,7 +390,11 @@ pageControl            = _pageControl;
       return;
    }
 
-   NSUInteger         currentIndex   = [_dataSource pageViewController:self indexOfObject:activeObject];
+   NSUInteger currentIndex = [_dataSource pageViewController:self indexOfObject:activeObject];
+
+   _previousObject = [_dataSource pageViewController:self objectAtIndex:index - 1];
+   _nextObject     = [_dataSource pageViewController:self objectAtIndex:index + 1];
+
    UIViewController * viewController = [_dataSource pageViewController:self viewControllerForObject:object];
 
    // Are we animating forward or backward?
@@ -411,6 +414,21 @@ pageControl            = _pageControl;
       @synchronized(_objectReferenceByViewControllerReference)
       {
          return [_objectReferenceByViewControllerReference[weakController] object];
+      }
+   }
+
+   return nil;
+}
+
+- (UIViewController *)viewControllerForObject:(id)object
+{
+   if (object)
+   {
+      IDWeakObjectRepresentation * weakObject = [IDWeakObjectRepresentation weakRepresentationOfObject:object];
+
+      @synchronized(_viewControllerReferenceByObjectReference)
+      {
+         return [_viewControllerReferenceByObjectReference[weakObject] object];
       }
    }
 
@@ -451,10 +469,6 @@ pageControl            = _pageControl;
       @synchronized(_reusableControllerQueueByReuseIdentifier)
       {
          [_reusableControllerQueueByReuseIdentifier removeAllObjects];
-      }
-      @synchronized(_activeAndNeighboringControllers)
-      {
-         [_activeAndNeighboringControllers removeAllObjects];
       }
       @synchronized(_objectReferenceByViewControllerReference)
       {
@@ -538,6 +552,8 @@ pageControl            = _pageControl;
    UIViewController * viewController              = nil;
    NSUInteger         indexOfActiveViewController = self.indexOfActiveViewController;
 
+   _preparingNeighborViewControllers = YES;
+
    switch (direction)
    {
       case IDDynamicPageViewControllerNavigationDirectionForward:
@@ -560,6 +576,8 @@ pageControl            = _pageControl;
          break;
    }
 
+   _preparingNeighborViewControllers = NO;
+
    // Ensure that the view is loaded
    viewController.view.alpha = 1.0f;
 }
@@ -576,45 +594,51 @@ pageControl            = _pageControl;
       viewController = [_viewControllerReferenceByObjectReference[weakObject] object];
    }
 
-   // If a suitable view controller is found we still need to make sure it is
-   // the correct reuse identifier.
-   if (NO && viewController)
-   {
-      @synchronized(_reusableControllerQueueByReuseIdentifier)
-      {
-         NSMutableOrderedSet * reuseQueue = _reusableControllerQueueByReuseIdentifier[reuseIdentifier];
-
-         if ([reuseQueue containsObject:viewController])
-         {
-            [reuseQueue removeObject:viewController];
-
-            IDLogInfo(@"Reused controller %@ already representing object %@", viewController, object);
-            IDLogInfo(@"Controller %@ is no longer reusable", viewController);
-
-            return viewController;
-         }
-      }
-   }
-
    return viewController;
 }
 
-- (UIViewController *)inactiveViewControllerForReuseIdentifier:(NSString *)reuseIdentifier byAssociatingWithObject:(id)object
+- (UIViewController *)inactiveViewControllerForReuseIdentifier:(NSString *)reuseIdentifier byAssociatingWithObject:(id)object atIndex:(NSUInteger)index
 {
-   id viewController = nil;
+   __block id viewController = nil;
 
    @synchronized(_reusableControllerQueueByReuseIdentifier)
    {
       NSMutableOrderedSet * reuseQueue = _reusableControllerQueueByReuseIdentifier[reuseIdentifier];
+      id previousViewController;
+      id nextViewController;
 
-      // Don't reuse the only controller in the queue. We want 2 at all times
-      // since there is one controller before and one after the current one
-      viewController = reuseQueue.firstObject;
-
-      if (viewController)
+      // If this is being called as a result of preparing controllers adjacent
+      // to the active controller, ensure that the controllers to avoid are in
+      // relation to the active controller rather than this adjacent one.
+      if (_preparingNeighborViewControllers)
       {
-         [reuseQueue removeObjectAtIndex:0];
+         previousViewController = [self viewControllerForObject:_previousObject];
+         nextViewController     = [self viewControllerForObject:_nextObject];
       }
+      // If a new controller is being set, the previous and next ivars are not
+      // relevant; instead, look for existing controllers representing the
+      // objects adjacent to the new object
+      else
+      {
+         id previousObject = [_dataSource pageViewController:self objectAtIndex:index - 1];
+         id nextObject     = [_dataSource pageViewController:self objectAtIndex:index + 1];
+
+         previousViewController = [self viewControllerForObject:previousObject];
+         nextViewController     = [self viewControllerForObject:nextObject];
+      }
+
+      // Find the first controller that is not representing an object adjacent
+      // to the target object
+      [reuseQueue enumerateObjectsUsingBlock:^(UIViewController * otherController, NSUInteger index, BOOL * stop) {
+         if (otherController != previousViewController &&
+             otherController != nextViewController)
+         {
+            viewController = otherController;
+            *stop = YES;
+
+            [reuseQueue removeObjectAtIndex:index];
+         }
+      }];
    }
 
    if (viewController)
@@ -681,22 +705,17 @@ pageControl            = _pageControl;
       _reuseIdentifierByControllerReference[weakReference] = reuseIdentifier;
    }
 
-   // Unless this controller is already presented, immediately mark it for reuse
-   // otherwise we may create multiple copies of the same controller.
-   if (![_activeAndNeighboringControllers containsObject:viewController])
+   @synchronized(_reusableControllerQueueByReuseIdentifier)
    {
-      @synchronized(_reusableControllerQueueByReuseIdentifier)
+      NSMutableOrderedSet * reuseQueue = _reusableControllerQueueByReuseIdentifier[reuseIdentifier];
+
+      if (!reuseQueue)
       {
-         NSMutableOrderedSet * reuseQueue = _reusableControllerQueueByReuseIdentifier[reuseIdentifier];
-
-         if (!reuseQueue)
-         {
-            reuseQueue = [NSMutableOrderedSet new];
-            _reusableControllerQueueByReuseIdentifier[reuseIdentifier] = reuseQueue;
-         }
-
-         [reuseQueue addObject:viewController];
+         reuseQueue = [NSMutableOrderedSet new];
+         _reusableControllerQueueByReuseIdentifier[reuseIdentifier] = reuseQueue;
       }
+
+      [reuseQueue addObject:viewController];
    }
 
    IDLogInfo(@"Created a new controller %@ to represent %@", viewController, object);
@@ -756,7 +775,8 @@ pageControl            = _pageControl;
    if (!viewController)
    {
       viewController = [self inactiveViewControllerForReuseIdentifier:reuseIdentifier
-                                              byAssociatingWithObject:object];
+                                              byAssociatingWithObject:object
+                                                              atIndex:index];
    }
 
    if (!viewController)
@@ -1334,7 +1354,7 @@ pageControl            = _pageControl;
    else if (state == UIGestureRecognizerStateChanged)
    {
       [self showNeighboringControllerIfNecessaryInDirection:direction];
-
+      
       [self applyTransformsInterpolatedTo:interpolationRatio inDirection:direction];
    }
 }
@@ -1344,7 +1364,7 @@ pageControl            = _pageControl;
 - (void)didReceiveMemoryWarning
 {
    [super didReceiveMemoryWarning];
-
+   
    @synchronized(_reusableControllerQueueByReuseIdentifier)
    {
       [_reusableControllerQueueByReuseIdentifier removeAllObjects];
