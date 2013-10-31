@@ -77,6 +77,7 @@ pageControl            = _pageControl;
    _panGestureRecognizer.delegate           = self;
    _panGestureRecognizer.delaysTouchesBegan = YES;
 
+   controllerView.clipsToBounds = YES;
    [controllerView addGestureRecognizer:_panGestureRecognizer];
 
    _controllerContainerView.translatesAutoresizingMaskIntoConstraints = NO;
