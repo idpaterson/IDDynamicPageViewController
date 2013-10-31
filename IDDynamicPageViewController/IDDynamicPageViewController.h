@@ -151,6 +151,10 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 /// Determines how the page controller transitions between pages.
 @property (nonatomic, assign) IDDynamicPageViewControllerTransitionStyle transitionStyle;
 
+/// Specifies whether the controller is currently transitioning due to user
+/// interaction with the page view controller such as a drag or fling.
+@property (nonatomic, assign, readonly, getter = isTransitioningDueToUserInteraction) BOOL transitioningDueToUserInteraction;
+
 #pragma mark - Configuring the page control element
 /// @name      Configuring the page control element
 

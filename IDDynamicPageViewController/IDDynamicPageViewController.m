@@ -253,6 +253,8 @@ pageControl            = _pageControl;
    NSTimeInterval     duration             = animated ? _animationDuration : 0.0;
    NSUInteger         transitionNumber     = ++_transitionNumber;
 
+   _transitioningDueToUserInteraction = NO;
+
    if (!viewController || [activeViewController isEqual:viewController])
    {
       [self animateWithDuration:duration
@@ -1375,6 +1377,8 @@ pageControl            = _pageControl;
                           previousViewController:activeViewController
                              transitionCompleted:completed];
 
+                        _transitioningDueToUserInteraction = NO;
+
                         dispatch_async(dispatch_get_main_queue(), ^{
                            [self prepareNeighboringControllerIfNecessaryInDirection:direction];
                         });
@@ -1385,6 +1389,10 @@ pageControl            = _pageControl;
       [self showNeighboringControllerIfNecessaryInDirection:direction];
       
       [self applyTransformsInterpolatedTo:interpolationRatio inDirection:direction];
+   }
+   else if (state == UIGestureRecognizerStateBegan)
+   {
+      _transitioningDueToUserInteraction = YES;
    }
 }
 
