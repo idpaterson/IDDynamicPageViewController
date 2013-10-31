@@ -351,6 +351,7 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 - (void)didFinishAnimating:(BOOL)finished previousViewController:(UIViewController *)previousViewController transitionCompleted:(BOOL)completed;
 
 - (void)willTransitionToViewController:(UIViewController *)pendingViewController;
+- (void)didActivateViewController:(UIViewController *)viewController;
 
 @end
 
@@ -364,6 +365,13 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 /// @param pendingViewController The view controller that may be displayed as a
 /// result of the gesture.
 - (void)pageViewController:(IDDynamicPageViewController *)pageViewController willTransitionToViewController:(UIViewController *)pendingViewController;
+
+/// Called during <setActiveViewController>, this allows immediate response to
+/// changes in the active controller.
+///
+/// @param pageViewController  The page view controller
+/// @param viewController      The view controller that has become active
+- (void)pageViewController:(IDDynamicPageViewController *)pageViewController didActivateViewController:(UIViewController *)viewController;
 
 /// Sent when a gesture-initiated or programmatic transition ends.
 ///
@@ -431,14 +439,6 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 /// @return The view controller that represents the given index, or `nil` to
 /// indicate that there is no controller for that index.
 - (UIViewController *)pageViewController:(IDDynamicPageViewController *)pageViewController viewControllerForPageAtIndex:(NSUInteger)index;
-
-/// Returns the controller that should be displayed when the data source is set.
-/// (required)
-///
-/// @param pageViewController The page view controller
-///
-/// @return the controller to display
-- (UIViewController *)pageViewControllerDefaultViewController:(IDDynamicPageViewController *)pageViewController;
 
 /// Returns the index of the object in the data source. (required)
 ///

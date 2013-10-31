@@ -362,6 +362,8 @@ pageControl            = _pageControl;
    _nextObject     = [_dataSource pageViewController:self objectAtIndex:index + 1];
 
    [self updatePageControl];
+
+   [self didActivateViewController:_activeViewController];
 }
 
 #pragma mark Object-based navigation
@@ -1507,6 +1509,14 @@ pageControl            = _pageControl;
    if ([_delegate respondsToSelector:@selector(pageViewController:willTransitionToViewController:)])
    {
       [_delegate pageViewController:self willTransitionToViewController:pendingViewController];
+   }
+}
+
+- (void)didActivateViewController:(UIViewController *)viewController
+{
+   if ([_delegate respondsToSelector:@selector(pageViewController:didActivateViewController:)])
+   {
+      [_delegate pageViewController:self didActivateViewController:viewController];
    }
 }
 
