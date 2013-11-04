@@ -112,6 +112,15 @@ pageControl            = _pageControl;
    {
       [self reloadData];
    }
+
+   // reloadData will not work until the controller is in a window, so it may
+   // be necessary to try again.
+   if (_needsReloadData)
+   {
+      dispatch_async(dispatch_get_main_queue(), ^{
+         [self reloadData];
+      });
+   }
 }
 
 #pragma mark - Child view controller management
