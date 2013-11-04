@@ -92,6 +92,7 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
    NSUInteger _updateLevel;
    NSUInteger _transitionNumber;
    BOOL       _dataWasChangedWithoutBeginUpdates;
+   BOOL       _needsReloadData;
 
 #pragma mark Interaction support
 

@@ -104,6 +104,16 @@ pageControl            = _pageControl;
    [self updatePageControlLayout];
 }
 
+- (void)viewWillAppear:(BOOL)animated
+{
+   [super viewWillAppear:animated];
+
+   if (_needsReloadData)
+   {
+      [self reloadData];
+   }
+}
+
 #pragma mark - Child view controller management
 
 #pragma mark Appearance and disappearance
@@ -839,6 +849,15 @@ pageControl            = _pageControl;
 
 - (void)reloadData
 {
+   if (!self.view.window)
+   {
+      _needsReloadData = YES;
+
+      return;
+   }
+
+   _needsReloadData = NO;
+
    UIViewController * currentController = self.activeViewController;
    id                 object            = self.activeObject;
    NSUInteger         index             = self.indexOfActiveViewController;
