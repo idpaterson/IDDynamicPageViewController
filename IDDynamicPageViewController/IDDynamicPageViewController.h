@@ -71,6 +71,7 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 <UIGestureRecognizerDelegate>
 {
    UIPageControl * _pageControl;
+   BOOL _canApplyConstraintsToTopAndBottomOfControllerView;
 
 @private
 #pragma mark - ivars
@@ -118,6 +119,8 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 /// @param interPageSpacing The gap between pages
 - (id)initWithNavigationOrientation:(IDDynamicPageViewControllerNavigationOrientation)navigationOrientation interPageSpacing:(CGFloat)interPageSpacing;
 
+- (void)setup;
+
 #pragma mark - Configuring page display
 /// @name      Configuring page display
 
@@ -148,6 +151,9 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 /// the drag will cause the `otherViewController` to switch from the view
 /// controller after to the view controller before.
 @property (nonatomic, strong, readonly) UIViewController * otherViewController;
+
+/// <#Description#>
+@property (nonatomic, strong, readonly) UIView * controllerContainerView;
 
 /// Determines how the page controller transitions between pages.
 @property (nonatomic, assign) IDDynamicPageViewControllerTransitionStyle transitionStyle;
@@ -192,6 +198,17 @@ typedef NS_ENUM (NSUInteger, IDDynamicPageViewControllerTransitionStyle)
 /// Specifies whether the pages transition horizontally or vertically.
 /// @see pageControlPosition
 @property (nonatomic, assign, readonly) IDDynamicPageViewControllerNavigationOrientation navigationOrientation;
+
+/// Called whenever the number of pages or selected page in the page control
+/// may have changed.
+///
+/// Subclasses must call through to the superclass implementation in order to
+/// ensure proper functionality of the page control. Any changes that would
+/// affect the layout of the page view and controller should be done before
+/// calling the superclass.
+- (void)updatePageControl;
+
+- (void)updatePageControlLayout;
 
 #pragma mark - Programmatic navigation
 /// @name      Programmatic navigation

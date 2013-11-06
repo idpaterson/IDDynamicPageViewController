@@ -10,6 +10,8 @@
 
 #import "IDWeakObjectRepresentation.h"
 
+#include <QuartzCore/QuartzCore.h>
+
 @interface IDDynamicPageViewController ()
 
 @end
@@ -35,6 +37,7 @@ pageControl            = _pageControl;
    _minimumGestureCompletionRatioToChangeViewController = 0.3f;
    _minimumGestureVelocityToChangeViewController        = 100.0f;
    _transitionStyle = IDDynamicPageViewControllerTransitionStyleScroll;
+   _canApplyConstraintsToTopAndBottomOfControllerView = YES;
 }
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
@@ -96,10 +99,13 @@ pageControl            = _pageControl;
                   options:0 metrics:nil views:views];
    [controllerView addConstraints:constraints];
 
-   constraints = [NSLayoutConstraint
-                  constraintsWithVisualFormat:@"V:|[_controllerContainerView]"
-                  options:0 metrics:nil views:views];
-   [controllerView addConstraints:constraints];
+   if (_canApplyConstraintsToTopAndBottomOfControllerView)
+   {
+      constraints = [NSLayoutConstraint
+                     constraintsWithVisualFormat:@"V:|[_controllerContainerView]"
+                     options:0 metrics:nil views:views];
+      [controllerView addConstraints:constraints];
+   }
 
    [self updatePageControlLayout];
 }
@@ -1019,10 +1025,14 @@ pageControl            = _pageControl;
                      constraintsWithVisualFormat:@"H:|[_pageControl]|"
                      options:0 metrics:nil views:views];
       [parentView addConstraints:constraints];
-      constraints = [NSLayoutConstraint
-                     constraintsWithVisualFormat:@"V:[_pageControl]|"
-                     options:0 metrics:nil views:views];
-      [parentView addConstraints:constraints];
+
+      if (_canApplyConstraintsToTopAndBottomOfControllerView)
+      {
+         constraints = [NSLayoutConstraint
+                        constraintsWithVisualFormat:@"V:[_pageControl]|"
+                        options:0 metrics:nil views:views];
+         [parentView addConstraints:constraints];
+      }
    }
    else
    {
@@ -1033,11 +1043,15 @@ pageControl            = _pageControl;
    // bottom of the superview
    if (_pageControlOverlaysContent)
    {
-      constraints = [NSLayoutConstraint
-                     constraintsWithVisualFormat:@"V:[_controllerContainerView]|"
-                     options:0 metrics:nil views:views];
-      [pageControlConstraints addObjectsFromArray:constraints];
-      [parentView addConstraints:constraints];
+      constraint = [NSLayoutConstraint
+                    constraintWithItem:_controllerContainerView
+                    attribute:NSLayoutAttributeBottom
+                    relatedBy:NSLayoutRelationEqual
+                    toItem:_pageControl
+                    attribute:NSLayoutAttributeBottom
+                    multiplier:1.0f constant:0.0f];
+      [pageControlConstraints addObject:constraint];
+      [parentView addConstraint:constraint];
    }
    // or to the top of the page control
    else
@@ -1395,6 +1409,8 @@ pageControl            = _pageControl;
 
                         activeViewController.view.layer.transform = CATransform3DIdentity;
                         otherViewController.view.layer.transform = CATransform3DIdentity;
+                        activeViewController.view.layer.shouldRasterize = NO;
+                        otherViewController.view.layer.shouldRasterize = NO;
 
                         _otherViewController = nil;
                         _appearingControllerDirection = IDDynamicPageViewControllerNavigationDirectionNone;
@@ -1417,6 +1433,11 @@ pageControl            = _pageControl;
       [self showNeighboringControllerIfNecessaryInDirection:direction];
       
       [self applyTransformsInterpolatedTo:interpolationRatio inDirection:direction];
+
+      _activeViewController.view.layer.rasterizationScale = [UIScreen mainScreen].scale;
+      _activeViewController.view.layer.shouldRasterize = YES;
+      _otherViewController.view.layer.rasterizationScale = [UIScreen mainScreen].scale;
+      _otherViewController.view.layer.shouldRasterize = YES;
    }
    else if (state == UIGestureRecognizerStateBegan)
    {
