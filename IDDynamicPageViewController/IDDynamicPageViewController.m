@@ -1482,6 +1482,12 @@ pageControl            = _pageControl;
 
 - (BOOL)shouldBeginPanGestureWithGestureRecognizer:(UIPanGestureRecognizer *)panGestureRecognizer
 {
+   if ([_dataSource respondsToSelector:@selector(numberOfPagesInPageViewController:)] &&
+       [_dataSource numberOfPagesInPageViewController:self] <= 1)
+   {
+      return NO;
+   }
+
    CGPoint velocity = [panGestureRecognizer velocityInView:_controllerContainerView];
 
    switch (_navigationOrientation)
