@@ -556,6 +556,8 @@ pageControl            = _pageControl;
 
    if (!viewController)
    {
+      _appearingControllerDirection = IDDynamicPageViewControllerNavigationDirectionNone;
+      _otherViewController          = nil;
       return;
    }
 
