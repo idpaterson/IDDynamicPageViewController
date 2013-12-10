@@ -287,7 +287,7 @@ pageControl            = _pageControl;
                      animations:^{
                         self.activeViewController = viewController;
                      }
-                     completion:nil];
+                     completion:completion];
 
       return;
    }
@@ -929,6 +929,10 @@ pageControl            = _pageControl;
                        animations:^{
                           currentController.view.alpha = 0.0f;
                        }];
+
+      // In case the controller was faded out in a reloadData and then
+      // displayed again, make sure the alpha is reset.
+      controllerToPresent.view.alpha = 1.0f;
 
       [self setViewController:controllerToPresent
                     direction:direction animated:YES

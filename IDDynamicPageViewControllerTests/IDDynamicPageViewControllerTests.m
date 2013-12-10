@@ -1100,6 +1100,40 @@
 
    assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@0));
    assertThat(pageViewController.activeViewController, isNot(nilValue()));
+   assertThatFloat(pageViewController.activeViewController.view.alpha, equalTo(@1.0f));
+}
+
+- (void)testRemoveOnlyViewControllerThenAddItAgain
+{
+   IDDynamicPageViewController * pageViewController = [self newPageViewControllerInViewHierarchy];
+   IDMutablePageViewDataSource * dataSource         = [self newDataSource];
+   id object = @1;
+
+   pageViewController.dataSource = dataSource;
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@(NSNotFound)));
+
+   [dataSource addObject:object];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@0));
+
+   [pageViewController beginUpdates];
+
+   [dataSource removeObjectAtIndex:0];
+
+   [pageViewController endUpdates];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@(NSNotFound)));
+   assertThat(pageViewController.activeViewController, nilValue());
+
+   [dataSource addObject:object];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@0));
+   assertThat(pageViewController.activeViewController, isNot(nilValue()));
+
+   // reloadData was fading out the controller then the alpha was staying at
+   // zero when the controller was displayed again.
+   assertThatFloat(pageViewController.activeViewController.view.alpha, equalTo(@1.0f));
 }
 
 #pragma mark View Controller Reuse with Data Source
