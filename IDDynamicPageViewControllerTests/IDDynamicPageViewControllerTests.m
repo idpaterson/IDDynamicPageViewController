@@ -1117,11 +1117,7 @@
 
    assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@0));
 
-   [pageViewController beginUpdates];
-
    [dataSource removeObjectAtIndex:0];
-
-   [pageViewController endUpdates];
 
    assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@(NSNotFound)));
    assertThat(pageViewController.activeViewController, nilValue());
@@ -1134,6 +1130,33 @@
    // reloadData was fading out the controller then the alpha was staying at
    // zero when the controller was displayed again.
    assertThatFloat(pageViewController.activeViewController.view.alpha, equalTo(@1.0f));
+}
+
+- (void)testRemovedViewControllerIsRemovedFromAncestors
+{
+   IDDynamicPageViewController * pageViewController = [self newPageViewControllerInViewHierarchy];
+   IDMutablePageViewDataSource * dataSource         = [self newDataSource];
+   UIViewController * activeViewController;
+   id object = @1;
+
+   pageViewController.dataSource = dataSource;
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@(NSNotFound)));
+
+   [dataSource addObject:object];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@0));
+
+   activeViewController = pageViewController.activeViewController;
+
+   [dataSource removeObjectAtIndex:0];
+
+   assertThat(@(pageViewController.indexOfActiveViewController), equalTo(@(NSNotFound)));
+   assertThat(pageViewController.activeViewController, nilValue());
+
+   // The old view controller was not actually being removed, just faded out
+   assertThat(activeViewController.parentViewController, nilValue());
+   assertThat(activeViewController.view.superview, nilValue());
 }
 
 #pragma mark View Controller Reuse with Data Source

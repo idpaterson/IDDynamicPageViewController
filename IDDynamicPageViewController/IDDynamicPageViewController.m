@@ -282,6 +282,15 @@ pageControl            = _pageControl;
 
    if (!viewController || [activeViewController isEqual:viewController])
    {
+      if (activeViewController && !viewController)
+      {
+         [self willRemoveViewController:activeViewController animated:animated];
+         [self removeViewController:activeViewController animated:animated];
+         [self didFinishAnimating:YES
+           previousViewController:activeViewController
+              transitionCompleted:YES];
+      }
+
       [self animateWithDuration:duration
                         options:(UIViewAnimationOptionCurveEaseOut)
                      animations:^{
@@ -296,8 +305,8 @@ pageControl            = _pageControl;
    // be cancelled and its completion block called asynchronously.
    if (_otherViewController.view.layer.animationKeys.count > 0)
    {
-      [self removeViewController:_otherViewController animated:YES];
-      [self didShowViewController:_activeViewController animated:YES];
+      [self removeViewController:_otherViewController animated:animated];
+      [self didShowViewController:_activeViewController animated:animated];
 
       [_otherViewController.view.layer removeAllAnimations];
       [_activeViewController.view.layer removeAllAnimations];
