@@ -795,6 +795,11 @@ pageControl            = _pageControl;
 {
    NSAssert(reuseIdentifier != nil, @"Reuse identifier cannot be nil");
 
+   if (!reuseIdentifier)
+   {
+      return;
+   }
+
    if (viewControllerClass)
    {
       _controllerClassByReuseIdentifier[reuseIdentifier] = viewControllerClass;
@@ -809,6 +814,11 @@ pageControl            = _pageControl;
 {
    NSAssert(reuseIdentifier != nil, @"Reuse identifier cannot be nil");
    NSAssert(object != nil, @"Object cannot be nil");
+
+   if (!reuseIdentifier || !object)
+   {
+      return nil;
+   }
 
    id viewController = [self inactiveViewControllerForReuseWithIdentifier:reuseIdentifier
                                               alreadyAssociatedWithObject:object];
